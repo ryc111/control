@@ -1,0 +1,2733 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Control · 自制力工程</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#f4f2ed" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1a1714" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Control">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png">
+<script>
+  // pre-paint theme bootstrap (avoids flash of wrong theme)
+  (function () {
+    try {
+      var t = localStorage.getItem('control-theme');
+      if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
+  })();
+</script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    :root[data-theme="light"] {
+      --bg: #f4f2ed; --card: #ffffff; --sub: #faf8f4; --line: #e5e1d8; --line2: #f0ede5;
+      --ink: #221f1b; --ink2: #57514a; --mut: #8d8678; --faint: #b3ac9c; --faint2: #d8d2c4; --dash: #cfc9bb;
+      --ac: #3b5fc4; --ac-d: #324fa6; --ac-bg: #eef1fa; --ac-line: #c7d0ea;
+      --dg: #bf4632; --dg-d: #a53b29; --dg-bg: #faefec; --dg-line: #e8c9c2;
+      --ok: #2e7d4f; --ok-bg: #e8f3ec; --ok-line: #cde3d5;
+      --warn: #8d6a1f; --warn-bg: #f7efdc; --purple: #6b5ca8; --purple-bg: #efecf7; --green-tag: #7d9b6e;
+      --fill: #221f1b; --fill-d: #3a352e; --on-fill: #f4f2ed;
+      --ring-track: #e8ecf7; --pomo-track: #ece9e0;
+      --hm0: #f0ede5; --hm1: #cdd8ec; --hm2: #8fa8d8; --hm3: #3b5fc4;
+      --shadow: rgba(34,31,27,.07); --shadow-sm: rgba(34,31,27,.04); --scrim: rgba(34,31,27,.4);
+    }
+    :root[data-theme="dark"] {
+      --bg: #161311; --card: #211d19; --sub: #1c1916; --line: #332e28; --line2: #2a2622;
+      --ink: #ece7df; --ink2: #c2bbae; --mut: #8f897c; --faint: #6f6a5f; --faint2: #4a4640; --dash: #4a4640;
+      --ac: #4f6cd0; --ac-d: #6685dc; --ac-bg: #232a3a; --ac-line: #3a5285;
+      --dg: #c8513d; --dg-d: #d8624e; --dg-bg: #3a2420; --dg-line: #6a3a32;
+      --ok: #6cc08e; --ok-bg: #1f3328; --ok-line: #2e5640;
+      --warn: #d8b06a; --warn-bg: #38301c; --purple: #a99fd0; --purple-bg: #2a2638; --green-tag: #9ab98a;
+      --fill: #ece7df; --fill-d: #d8d2c4; --on-fill: #1a1714;
+      --ring-track: #2a3140; --pomo-track: #2c2924;
+      --hm0: #2a2622; --hm1: #2e3a52; --hm2: #4a6296; --hm3: #6f8fe0;
+      --shadow: rgba(0,0,0,.4); --shadow-sm: rgba(0,0,0,.25); --scrim: rgba(0,0,0,.6);
+    }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Noto Sans SC', system-ui, sans-serif; transition: background .25s, color .25s; overflow-x: hidden; }
+    @keyframes ctrlPulse { 0% { box-shadow: 0 0 0 0 rgba(59,95,196,.28); } 70% { box-shadow: 0 0 0 14px rgba(59,95,196,0); } 100% { box-shadow: 0 0 0 0 rgba(59,95,196,0); } }
+
+    /* ===== mobile / narrow-screen responsive layer (overrides inline desktop styles) ===== */
+    @media (max-width: 760px) {
+      .app-shell { flex-direction: column-reverse !important; height: 100dvh !important; }
+      .app-sidebar {
+        width: 100% !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-right: none !important;
+        border-top: 1px solid var(--line) !important;
+        padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+        gap: 6px !important;
+        flex-shrink: 0;
+      }
+      .sb-brand { display: none !important; }
+      .sb-nav {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        flex: 1 1 100% !important;
+        gap: 5px !important;
+      }
+      .sb-nav > div { white-space: nowrap; flex-shrink: 0; padding: 7px 11px !important; }
+      .sb-foot { margin-top: 0 !important; flex-direction: row !important; flex-shrink: 0; gap: 6px !important; align-items: center; }
+      .sb-foot > div { flex-direction: row !important; }
+      .sb-stamp { display: none !important; }
+      .app-main-inner { padding: 16px 14px 28px !important; }
+      /* collapse every inline multi-column grid into a single column */
+      [data-screen-label][style*="grid-template-columns"],
+      [data-screen-label] div[style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+      /* hero number scales down so it never overflows */
+      .app-main-inner [style*="font-size: 64px"] { font-size: 46px !important; }
+    }
+    @media (max-width: 380px) {
+      .app-main-inner { padding: 14px 10px 24px !important; }
+    }
+
+    /* ===== desktop collapsible sidebar (icon rail) ===== */
+    @media (min-width: 761px) {
+      .app-sidebar { transition: width .18s ease; }
+      .nav-item { position: relative; }
+      .nav-icon { display: none; font-family: 'Noto Sans SC', system-ui, sans-serif; font-size: 16px; line-height: 1; }
+      .nav-dot { display: none; position: absolute; top: 8px; right: 12px; width: 6px; height: 6px; border-radius: 50%; background: var(--ac); }
+      .sb-brand-mark { display: none; }
+
+      .app-sidebar.is-collapsed { width: 60px !important; flex: 0 0 60px !important; padding-left: 8px !important; padding-right: 8px !important; align-items: stretch; }
+      .app-sidebar.is-collapsed .sb-brand-full { display: none; }
+      .app-sidebar.is-collapsed .sb-brand-mark { display: flex; }
+      .app-sidebar.is-collapsed .nav-label { display: none; }
+      .app-sidebar.is-collapsed .nav-badge { display: none; }
+      .app-sidebar.is-collapsed .nav-icon { display: flex; align-items: center; justify-content: center; }
+      .app-sidebar.is-collapsed .nav-item { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+      .app-sidebar.is-collapsed .nav-item.has-badge .nav-dot { display: block; }
+      .app-sidebar.is-collapsed .sb-foot-row { flex-direction: column !important; }
+      .app-sidebar.is-collapsed .sb-org-btn { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+      .app-sidebar.is-collapsed .sb-org-label { display: none; }
+      .app-sidebar.is-collapsed .sb-stamp { display: none; }
+    }
+  </style>
+</helmet>
+
+<div style="display: flex; height: 100vh; overflow: hidden;" class="app-shell">
+
+  <!-- ================= sidebar ================= -->
+  <div style="width: 212px; flex-shrink: 0; border-right: 1px solid var(--line); background: var(--sub); display: flex; flex-direction: column; padding: 20px 12px 16px;" class="app-sidebar {{ sbCollapsedClass }}">
+    <div class="sb-brand-mark" style="width: 40px; height: 40px; border-radius: 10px; background: var(--ink); color: var(--on-fill); align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 19px; margin: 0 auto 16px;">C</div>
+    <div style="padding: 0 10px 18px;" class="sb-brand sb-brand-full">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 17px; letter-spacing: 3px;">CONTROL</div>
+      <div style="font-size: 12px; color: var(--mut); margin-top: 2px;">自制力工程 · CTDP/RSIP</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px;" class="sb-nav">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="6">
+        <div style="{{ n.style }}" class="{{ n.itemClass }}" title="{{ n.label }}" style-hover="background: var(--line2);" onClick="{{ n.onClick }}">
+          <span class="nav-icon">{{ n.icon }}</span>
+          <span class="nav-label">{{ n.label }}</span>
+          <span class="nav-badge" style="{{ n.badgeStyle }}">{{ n.badge }}</span>
+          <span class="nav-dot"></span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px;" class="sb-foot">
+      <div style="display: flex; gap: 8px;" class="sb-foot-row">
+        <button onClick="{{ onOpenSrc }}" class="sb-org-btn" style="flex: 1; display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: var(--ink); white-space: nowrap;" style-hover="border-color: var(--faint2);">
+          <span style="color: var(--mut);">⌘</span> <span class="sb-org-label">org</span>
+        </button>
+        <button onClick="{{ onToggleTheme }}" title="切换深浅色" style="width: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 9px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 15px; color: var(--ink);" style-hover="border-color: var(--faint2);">{{ themeIcon }}</button>
+      </div>
+      <button onClick="{{ onToggleCollapse }}" title="{{ collapseTitle }}" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px; background: transparent; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 12px; color: var(--mut); font-family: inherit;" style-hover="border-color: var(--faint2); color: var(--ink2);">{{ collapseIcon }}</button>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--faint); padding: 0 4px;" class="sb-stamp">{{ todayOrgStamp }}</div>
+    </div>
+  </div>
+
+  <!-- ================= main ================= -->
+  <div style="flex: 1; overflow-y: auto; min-width: 0;" class="app-main">
+    <div style="max-width: 1060px; margin: 0 auto; padding: 26px 32px 60px;" class="app-main-inner">
+
+      <!-- header -->
+      <div style="display: flex; align-items: center; gap: 12px 16px; margin-bottom: 22px; flex-wrap: wrap;" class="view-header">
+        <div style="font-size: 21px; font-weight: 700; flex-shrink: 0; white-space: nowrap;">{{ viewTitle }}</div>
+        <div style="font-size: 13px; color: var(--mut); flex-shrink: 0; white-space: nowrap;">{{ todayHuman }}</div>
+        <sc-if value="{{ auxChipShow }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--ac); color: var(--ac); border-radius: 999px; padding: 4px 14px; background: var(--ac-bg);">
+            <span style="font-size: 12.5px;">预约生效</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 15px;">{{ auxRemainingStr }}</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ sessChipShow }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 4px 14px; background: var(--ink); color: var(--on-fill);">
+            <span style="font-size: 12.5px;">神圣座位 · 专注中</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 15px;">{{ sessElapsedStr }}</span>
+          </div>
+        </sc-if>
+      </div>
+
+      <!-- ============ view: 任务链 ============ -->
+      <sc-if value="{{ vChain }}" hint-placeholder-val="{{ true }}">
+        <div data-screen-label="任务链" style="display: grid; grid-template-columns: 1fr 296px; gap: 18px; align-items: stretch;">
+
+          <!-- left column -->
+          <div style="display: flex; flex-direction: column; gap: 14px; min-width: 0;">
+
+            <!-- hero -->
+            <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px; box-shadow: 0 1px 2px rgba(34,31,27,.04);">
+              <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;">
+                <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 64px; line-height: 1; letter-spacing: -2px;">{{ heroStreakStr }}</div>
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                  <div style="font-size: 16px; font-weight: 700;">{{ heroName }} · 连胜</div>
+                  <div style="font-size: 12.5px; color: var(--mut); white-space: nowrap;">{{ heroMeta }}</div>
+                </div>
+                <div style="margin-left: auto; text-align: right;">
+                  <div style="font-size: 12px; color: var(--mut);">历史最长</div>
+                  <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 18px;">{{ heroBestStr }}</div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 7px; align-items: center; margin-top: 18px; flex-wrap: wrap;">
+                <sc-for list="{{ heroDots }}" as="d" hint-placeholder-count="14">
+                  <div style="{{ d.style }}">{{ d.label }}</div>
+                </sc-for>
+              </div>
+              <div style="font-size: 12px; color: var(--faint); margin-top: 12px;">每个节点 = 一次工作量证明，断链则全部清零 —— 沉没成本即约束力</div>
+            </div>
+
+            <!-- chain cards -->
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <div style="font-size: 13px; color: var(--mut);">点击卡片切换激活链</div>
+                <button onClick="{{ onManageChains }}" style="margin-left: auto; display: flex; align-items: center; gap: 5px; background: none; border: none; color: var(--ac); font-size: 13px; cursor: pointer; font-family: inherit; padding: 2px 4px; white-space: nowrap; flex-shrink: 0;" style-hover="text-decoration: underline;">⚙ 管理链</button>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;">
+                <sc-for list="{{ chainCards }}" as="c" hint-placeholder-count="3">
+                  <div style="{{ c.style }}" onClick="{{ c.onClick }}">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span style="font-size: 13.5px; font-weight: 700; white-space: nowrap;">{{ c.name }}</span>
+                      <span style="{{ c.badgeStyle }}">{{ c.badge }}</span>
+                      <span style="margin-left: auto; font-size: 13px; color: var(--faint); cursor: pointer; flex-shrink: 0;" onClick="{{ c.onEdit }}" style-hover="color: var(--ac);">⚙</span>
+                    </div>
+                    <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 30px; margin: 6px 0 2px;">{{ c.streakStr }}</div>
+                    <div style="font-size: 12px; color: var(--mut);">{{ c.desc }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- session card -->
+            <sc-if value="{{ sessActive }}" hint-placeholder-val="{{ false }}">
+              <div style="background: var(--card); border: 1.5px solid var(--ink); border-radius: 14px; padding: 20px 24px; box-shadow: 0 2px 8px rgba(34,31,27,.07);">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                  <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+                    <div style="font-size: 12.5px; color: var(--mut);">神圣座位 · 正在执行 节点 {{ nextNodeStr }}</div>
+                    <div style="font-size: 17px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ sessTaskTitle }}</div>
+                  </div>
+                  <div style="margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 42px; letter-spacing: -1px;">{{ sessElapsedStr }}</div>
+                </div>
+                <div style="display: flex; gap: 18px; align-items: center; margin-top: 14px; flex-wrap: wrap;">
+                  <!-- pomodoro -->
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="{{ pomoRingStyle }}">
+                      <div style="width: 46px; height: 46px; border-radius: 50%; background: var(--card); display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; font-weight: 600;">{{ pomoTimeStr }}</div>
+                    </div>
+                    <div style="font-size: 12px; color: var(--mut); line-height: 1.5;">番茄钟<br>{{ pomoLabel }}</div>
+                  </div>
+                  <pre style="flex: 1; min-width: 240px; margin: 0; padding: 10px 12px; background: var(--sub); border: 1px solid var(--line2); border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; line-height: 1.6; color: var(--ink2); overflow: auto;">{{ sessOrg }}</pre>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 16px;">
+                  <button onClick="{{ onCompleteNode }}" style="padding: 10px 22px; background: var(--ac); color: #fff; border: none; border-radius: 9px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;" style-hover="background: var(--ac-d);">完成节点 {{ nextNodeStr }} ✓</button>
+                  <button onClick="{{ onViolation }}" style="padding: 10px 18px; background: var(--card); color: var(--dg); border: 1.5px solid var(--dg); border-radius: 9px; font-size: 14px; cursor: pointer; font-family: inherit;" style-hover="background: var(--dg-bg);">报告疑似违规…</button>
+                  <div style="margin-left: auto; align-self: center; font-size: 12px; color: var(--faint);">中断或走神？诚实判定 →</div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ sessIdle }}" hint-placeholder-val="{{ true }}">
+              <div style="flex: 1; background: var(--card); border: 1px dashed var(--dash); border-radius: 14px; padding: 20px 24px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div style="font-size: 15px; font-weight: 700; color: var(--ink2);">神圣座位空着</div>
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--ac); background: var(--ac-bg); border-radius: 5px; padding: 2px 8px; white-space: nowrap;">下一节点 {{ nextNodeStr }}</span>
+                  <div style="margin-left: auto; font-size: 12px; color: var(--faint); white-space: nowrap;">选一条任务坐上座位</div>
+                </div>
+
+                <!-- task picker -->
+                <div style="flex: 1; min-height: 96px; display: flex; flex-direction: column; gap: 5px; overflow-y: auto; padding-right: 2px;">
+                  <sc-for list="{{ seatTasks }}" as="t" hint-placeholder-count="4">
+                    <div style="{{ t.style }}" style-hover="border-color: var(--faint2);" onClick="{{ t.onPick }}">
+                      <span style="{{ t.radioStyle }}">{{ t.radio }}</span>
+                      <span style="{{ t.kwStyle }}">{{ t.kw }}</span>
+                      <span style="{{ t.titleStyle }}">{{ t.title }}</span>
+                      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--faint); flex-shrink: 0;">{{ t.tags }}</span>
+                      <span style="{{ t.metaStyle }}">{{ t.meta }}</span>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ seatEmpty }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-size: 12.5px; color: var(--faint); padding: 8px 2px;">今日没有待办任务 —— 在下方捕获一条，或去「今日」补充。</div>
+                  </sc-if>
+                </div>
+
+                <!-- inline capture -->
+                <div style="display: flex; gap: 8px;">
+                  <input value="{{ seatCapture }}" onChange="{{ onSeatCaptureChange }}" onKeyDown="{{ onSeatCaptureKey }}" placeholder="捕获新任务，回车加入并选中，如  论文修订 :突击:" style="flex: 1; min-width: 0; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; background: var(--sub);" style-focus="border-color: var(--ac); background: var(--card);">
+                  <button onClick="{{ onSeatCaptureAdd }}" style="padding: 9px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0;" style-hover="border-color: var(--faint2);">捕获</button>
+                </div>
+
+                <!-- actions -->
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--line2); padding-top: 12px;">
+                  <button onClick="{{ onStartNow }}" disabled="{{ seatEmpty }}" style="{{ seatStartStyle }}" style-hover="background: var(--fill-d);">{{ seatStartLabel }}</button>
+                  <sc-if value="{{ auxIdle }}" hint-placeholder-val="{{ true }}">
+                    <button onClick="{{ onSnap }}" style="padding: 10px 18px; background: var(--card); color: var(--ac); border: 1.5px solid var(--ac); border-radius: 9px; font-size: 14px; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0;" style-hover="background: var(--ac-bg);">打响指 · 预约 15 分钟</button>
+                  </sc-if>
+                  <div style="margin-left: auto; font-size: 12px; color: var(--faint); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">阻力大？先打响指，给自己 15 分钟缓冲</div>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+
+          <!-- right rail -->
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+
+            <!-- aux chain -->
+            <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; box-shadow: 0 1px 2px rgba(34,31,27,.04);">
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <div style="font-size: 14px; font-weight: 700;">预约链</div>
+                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--mut);">{{ auxStreakStr }}</div>
+                <div style="margin-left: auto; font-size: 11.5px; color: var(--faint);">线性时延原理</div>
+              </div>
+
+              <sc-if value="{{ auxActive }}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 14px;">
+                  <div style="{{ auxRingStyle }}">
+                    <div style="width: 96px; height: 96px; border-radius: 50%; background: var(--card); display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 24px; color: var(--ac);">{{ auxRemainingStr }}</div>
+                    </div>
+                  </div>
+                  <div style="font-size: 12.5px; color: var(--ink2); text-align: center; line-height: 1.6;">倒计时内必须<b>坐上神圣座位</b><br><span style="color: var(--faint);">超时 = 触发判定</span></div>
+                  <button onClick="{{ onSit }}" style="width: 100%; padding: 11px; background: var(--ac); color: #fff; border: none; border-radius: 9px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;" style-hover="background: var(--ac-d);">坐上神圣座位 → 开始 {{ nextNodeStr }}</button>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ auxIdle }}" hint-placeholder-val="{{ true }}">
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px;">
+                  <button onClick="{{ onSnap }}" style="width: 100%; padding: 13px; background: var(--card); color: var(--ac); border: 2px solid var(--ac); border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit;" style-hover="background: var(--ac-bg);">打响指 · 预约 15 分钟</button>
+                  <div style="font-size: 12px; color: var(--mut); line-height: 1.7;">「现在开始」阻力大，「15 分钟后开始」阻力小。响指一打，预约链生效 —— 15 分钟内必须坐上神圣座位。</div>
+                </div>
+              </sc-if>
+            </div>
+
+            <!-- mini agenda -->
+            <div style="flex: 1; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px;">
+              <div style="display: flex; align-items: baseline; margin-bottom: 10px;">
+                <div style="font-size: 14px; font-weight: 700;">今日 Agenda</div>
+                <button onClick="{{ goAgenda }}" style="margin-left: auto; background: none; border: none; color: var(--ac); font-size: 12.5px; cursor: pointer; font-family: inherit; padding: 0;">全部 →</button>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <sc-for list="{{ miniTasks }}" as="t" hint-placeholder-count="4">
+                  <div style="display: flex; gap: 10px; align-items: baseline; font-size: 13px;">
+                    <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--mut); width: 38px; flex-shrink: 0; white-space: nowrap;">{{ t.time }}</span>
+                    <span style="{{ t.style }}">{{ t.title }}</span>
+                    <span style="margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--faint); white-space: nowrap; flex-shrink: 0;">{{ t.tag }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- today numbers -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px;">
+                <div style="font-size: 12px; color: var(--mut);">今日专注</div>
+                <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 24px;">{{ todayHoursStr }}</div>
+              </div>
+              <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px;">
+                <div style="font-size: 12px; color: var(--mut);">今日节点</div>
+                <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 24px;">{{ todayNodesStr }}</div>
+              </div>
+            </div>
+
+            <!-- contribution graph -->
+            <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px;">
+              <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px;">
+                <div style="font-size: 14px; font-weight: 700;">工作量证明</div>
+                <div style="font-size: 11.5px; color: var(--faint);">近 10 周</div>
+              </div>
+              <div style="display: grid; grid-template-rows: repeat(7, 14px); grid-auto-flow: column; grid-auto-columns: 14px; gap: 4px; justify-content: center;">
+                <sc-for list="{{ railPowCells }}" as="c" hint-placeholder-count="70">
+                  <div style="{{ c.style }}"></div>
+                </sc-for>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px; justify-content: flex-end; margin-top: 10px; font-size: 10.5px; color: var(--faint);">
+                <span style="margin-right: 2px;">少</span>
+                <div style="width: 10px; height: 10px; border-radius: 2px; background: var(--line2);"></div>
+                <div style="width: 10px; height: 10px; border-radius: 2px; background: var(--hm1);"></div>
+                <div style="width: 10px; height: 10px; border-radius: 2px; background: var(--hm2);"></div>
+                <div style="width: 10px; height: 10px; border-radius: 2px; background: var(--ac);"></div>
+                <span style="margin-left: 2px;">多</span>
+              </div>
+            </div>
+
+            <!-- pet + points + betting -->
+            <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 52px; height: 52px; border-radius: 14px; background: var(--sub); border: 1px solid var(--line2); display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 18px; color: {{ petColor }}; flex-shrink: 0;">{{ petFace }}</div>
+                <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+                  <div style="font-size: 14px; font-weight: 700;">{{ petName }}</div>
+                  <div style="font-size: 12px; color: {{ petColor }};">{{ petLabel }}</div>
+                </div>
+                <div style="margin-left: auto; text-align: right; flex-shrink: 0;">
+                  <div style="font-size: 11px; color: var(--mut);">积分</div>
+                  <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 20px;">{{ pointsStr }}</div>
+                </div>
+              </div>
+
+              <div style="border-top: 1px solid var(--line2); padding-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; align-items: baseline; gap: 8px;">
+                  <div style="font-size: 13px; font-weight: 700;">押注</div>
+                  <div style="font-size: 11.5px; color: var(--faint);">{{ openBetsStr }}</div>
+                </div>
+                <sc-for list="{{ betRows }}" as="b" hint-placeholder-count="1">
+                  <div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px;">
+                    <span style="{{ b.statusStyle }}">{{ b.statusLabel }}</span>
+                    <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ b.desc }}</span>
+                    <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--warn); flex-shrink: 0;">{{ b.stakeStr }}</span>
+                    <sc-if value="{{ b.open }}" hint-placeholder-val="{{ true }}">
+                      <span onClick="{{ b.onWin }}" style="cursor: pointer; color: var(--ok); font-size: 14px; flex-shrink: 0;" style-hover="opacity:.7;">✓</span>
+                    </sc-if>
+                    <sc-if value="{{ b.open }}" hint-placeholder-val="{{ true }}">
+                      <span onClick="{{ b.onLose }}" style="cursor: pointer; color: var(--dg); font-size: 14px; flex-shrink: 0;" style-hover="opacity:.7;">✕</span>
+                    </sc-if>
+                  </div>
+                </sc-for>
+                <div style="display: flex; gap: 6px;">
+                  <input value="{{ betDesc }}" onChange="{{ onBetDesc }}" placeholder="押注目标…" style="flex: 1; min-width: 0; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; font-size: 12px; font-family: inherit; outline: none;" style-focus="border-color: var(--ac);">
+                  <input value="{{ betStake }}" onChange="{{ onBetStake }}" style="width: 44px; flex-shrink: 0; padding: 7px 6px; border: 1px solid var(--line); border-radius: 7px; font-size: 12px; font-family: 'IBM Plex Mono', monospace; outline: none; text-align: center;" style-focus="border-color: var(--ac);">
+                  <button onClick="{{ onBetAdd }}" style="padding: 7px 12px; background: var(--ink); color: var(--on-fill); border: none; border-radius: 7px; font-size: 12.5px; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0;" style-hover="background: var(--fill-d);">押</button>
+                </div>
+                <sc-if value="{{ betErrShow }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size: 11.5px; color: var(--dg);">{{ betErr }}</div>
+                </sc-if>
+                <div style="font-size: 11px; color: var(--faint); line-height: 1.6;">押上积分逼自己兑现承诺：完成 ✓ 翻倍信心，食言 ✕ 扣除积分。完成节点 +3、整组循环 +5。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ view: Agenda ============ -->
+      <sc-if value="{{ vAgenda }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="今日Agenda" style="display: flex; flex-direction: column; gap: 14px; max-width: 760px;">
+          <div style="display: flex; gap: 10px;">
+            <input value="{{ captureValue }}" onChange="{{ onCaptureChange }}" onKeyDown="{{ onCaptureKey }}" placeholder="快速捕获：输入任务后回车，如  论文修订 :突击:" style="flex: 1; padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; font-family: inherit; background: var(--card); outline: none;" style-focus="border-color: var(--ac);">
+            <button onClick="{{ onCaptureAdd }}" style="padding: 11px 20px; background: var(--ink); color: var(--on-fill); border: none; border-radius: 10px; font-size: 14px; cursor: pointer; font-family: inherit;" style-hover="background: var(--fill-d);">捕获</button>
+          </div>
+          <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;">
+            <sc-for list="{{ agendaRows }}" as="t" hint-placeholder-count="7">
+              <div style="{{ t.rowStyle }}" style-hover="background: var(--sub);">
+                <div style="{{ t.checkStyle }}" onClick="{{ t.onToggle }}">{{ t.checkLabel }}</div>
+                <span style="{{ t.kwStyle }}">{{ t.kw }}</span>
+                <span style="{{ t.titleStyle }}">{{ t.title }}</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--faint); flex-shrink: 0; white-space: nowrap;">{{ t.tags }}</span>
+                <span style="{{ t.metaStyle }}">{{ t.meta }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="font-size: 12px; color: var(--faint);">点击方框切换 TODO ⇄ DONE · 标签写法 :突击: :侦查: :指挥: :特勤: :工程: :炊事:</div>
+        </div>
+      </sc-if>
+
+      <!-- ============ view: 项目（org outline 编辑器） ============ -->
+      <sc-if value="{{ vProjects }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="项目" style="max-width: 820px;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
+            <div style="font-size: 13px; color: var(--mut);">这是 .org 大纲的可视化编辑器 —— 所有改动即时写回 org 文件</div>
+            <button onClick="{{ onProjAddTop }}" style="margin-left: auto; padding: 8px 16px; background: var(--ink); color: var(--on-fill); border: none; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="background: var(--fill-d);">+ 新建顶层条目</button>
+          </div>
+
+          <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px 8px;">
+            <sc-for list="{{ projRows }}" as="p" hint-placeholder-count="10">
+              <div style="display: flex; flex-direction: column;">
+                <div style="{{ p.rowStyle }}" style-hover="background: var(--sub);" onClick="{{ p.onSelect }}">
+                  <span style="{{ p.arrowStyle }}" onClick="{{ p.onToggle }}">{{ p.arrow }}</span>
+                  <span style="{{ p.starsStyle }}">{{ p.stars }}</span>
+                  <span style="{{ p.kwStyle }}" onClick="{{ p.onCycleKw }}">{{ p.kw }}</span>
+                  <span style="{{ p.prioStyle }}" onClick="{{ p.onCyclePrio }}">{{ p.prio }}</span>
+                  <sc-if value="{{ p.editing }}" hint-placeholder-val="{{ false }}">
+                    <input value="{{ p.title }}" onChange="{{ p.onTitle }}" onKeyDown="{{ p.onTitleKey }}" onClick="{{ p.stop }}" style="{{ p.titleInputStyle }}">
+                  </sc-if>
+                  <sc-if value="{{ p.notEditing }}" hint-placeholder-val="{{ true }}">
+                    <span style="{{ p.titleStyle }}">{{ p.title }}</span>
+                  </sc-if>
+                  <span style="{{ p.cookieStyle }}">{{ p.cookieStr }}</span>
+                  <span style="{{ p.tagsStyle }}">{{ p.tags }}</span>
+                  <span style="{{ p.schedStyle }}">{{ p.schedChip }}</span>
+                  <span style="{{ p.dlStyle }}">{{ p.dlChip }}</span>
+                </div>
+
+                <sc-if value="{{ p.noteShow }}" hint-placeholder-val="{{ false }}">
+                  <div style="{{ p.noteStyle }}">↳ {{ p.note }}</div>
+                </sc-if>
+
+                <sc-if value="{{ p.selected }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin: 2px 6px 10px; padding: 12px; background: var(--sub); border: 1px solid var(--line2); border-radius: 10px; display: flex; flex-direction: column; gap: 10px;">
+                    <!-- structure ops -->
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+                      <span style="font-size: 11.5px; color: var(--mut); margin-right: 4px;">结构</span>
+                      <button onClick="{{ p.onOutdent }}" title="升级 / 左移一层" style="padding: 6px 11px; background: var(--card); border: 1px solid var(--line); border-radius: 7px; font-size: 12.5px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--faint2);">⬅ 升级</button>
+                      <button onClick="{{ p.onIndent }}" title="降级 / 右移一层" style="padding: 6px 11px; background: var(--card); border: 1px solid var(--line); border-radius: 7px; font-size: 12.5px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--faint2);">➡ 降级</button>
+                      <button onClick="{{ p.onUp }}" title="上移" style="padding: 6px 11px; background: var(--card); border: 1px solid var(--line); border-radius: 7px; font-size: 12.5px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--faint2);">↑ 上移</button>
+                      <button onClick="{{ p.onDown }}" title="下移" style="padding: 6px 11px; background: var(--card); border: 1px solid var(--line); border-radius: 7px; font-size: 12.5px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--faint2);">↓ 下移</button>
+                      <button onClick="{{ p.onAddChild }}" style="padding: 6px 11px; background: var(--card); border: 1px solid var(--line); border-radius: 7px; font-size: 12.5px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--faint2);">+ 子项</button>
+                      <button onClick="{{ p.onAddSibling }}" style="padding: 6px 11px; background: var(--card); border: 1px solid var(--line); border-radius: 7px; font-size: 12.5px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--faint2);">+ 同级</button>
+                      <button onClick="{{ p.onToggleCookie }}" title="显示 [n/m] 进度统计" style="{{ p.cookieBtnStyle }}">[n/m] 进度</button>
+                      <button onClick="{{ p.onDelete }}" style="margin-left: auto; padding: 6px 11px; background: var(--card); border: 1px solid var(--dg-line); color: var(--dg); border-radius: 7px; font-size: 12.5px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--dg);">🗑 删除</button>
+                    </div>
+                    <!-- planning + tags -->
+                    <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center;">
+                      <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink2);">SCHEDULED<input type="date" value="{{ p.schedIso }}" onChange="{{ p.onSched }}" style="border: 1px solid var(--line); border-radius: 7px; padding: 5px 8px; font-size: 12px; font-family: 'IBM Plex Mono', monospace; outline: none; color: var(--ac);"></label>
+                      <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink2);">DEADLINE<input type="date" value="{{ p.dlIso }}" onChange="{{ p.onDl }}" style="border: 1px solid var(--line); border-radius: 7px; padding: 5px 8px; font-size: 12px; font-family: 'IBM Plex Mono', monospace; outline: none; color: var(--dg);"></label>
+                      <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink2); flex: 1; min-width: 160px;">标签<input value="{{ p.tagsValue }}" onChange="{{ p.onTags }}" placeholder=":突击:写作:" style="flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px; font-size: 12px; font-family: 'IBM Plex Mono', monospace; outline: none; color: var(--green-tag);" style-focus="border-color: var(--ac);"></label>
+                    </div>
+                    <!-- note -->
+                    <input value="{{ p.noteValue }}" onChange="{{ p.onNote }}" placeholder="备注（org 正文，可留空）" style="width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; font-size: 12.5px; font-family: inherit; outline: none; color: var(--ink2);" style-focus="border-color: var(--ac);">
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--faint); margin-top: 12px; line-height: 1.6;">
+            <span>点行选中并编辑 · 点 <b style="color: var(--mut);">关键字</b> 循环 TODO→NEXT→WAITING→DONE→CANCELLED</span>
+            <span>点 <b style="color: var(--mut);">[#]</b> 循环优先级 · 点 <b style="color: var(--mut);">▸/▾</b> 折叠 · 标题里回车 = 新建同级</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ view: 任务组（嵌套链 · 循环执行器） ============ -->
+      <sc-if value="{{ vGroups }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="任务组" style="max-width: 860px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="font-size: 13px; color: var(--mut); line-height: 1.7; max-width: 660px;">任务组 = 一棵 org 子树（<span style="font-family: 'IBM Plex Mono', monospace;">:REPEAT:</span> + <span style="font-family: 'IBM Plex Mono', monospace;">[/]</span> 进度）。开始后按步骤顺序循环推进、自动计时、到点切换，整组完成即为活动链 +1 个节点。</div>
+
+          <!-- running bar -->
+          <sc-if value="{{ groupRunActive }}" hint-placeholder-val="{{ false }}">
+            <div style="background: var(--card); border: 1.5px solid var(--ac); border-radius: 14px; padding: 18px 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; box-shadow: 0 2px 10px rgba(59,95,196,.12);">
+              <div style="{{ groupRunBar.ringStyle }}">
+                <div style="width: 96px; height: 96px; border-radius: 50%; background: var(--card); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;">
+                  <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 23px; color: var(--ac);">{{ groupRunBar.remainStr }}</div>
+                  <div style="font-size: 10.5px; color: var(--faint);">{{ groupRunBar.stepStr }}</div>
+                </div>
+              </div>
+              <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 4px;">
+                <div style="font-size: 12.5px; color: var(--mut);">{{ groupRunBar.title }} · {{ groupRunBar.cycleStr }}</div>
+                <div style="font-size: 19px; font-weight: 700;">{{ groupRunBar.itemTitle }} <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--green-tag);">{{ groupRunBar.tags }}</span></div>
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+                  <div style="flex: 1; height: 8px; background: var(--line2); border-radius: 4px; overflow: hidden;"><div style="height: 100%; background: var(--ac); border-radius: 4px; width: {{ groupRunBar.progPct }};"></div></div>
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--mut); white-space: nowrap;">{{ groupRunBar.progStr }}</span>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <button onClick="{{ groupRunBar.onNext }}" style="padding: 10px 20px; background: var(--ac); color: #fff; border: none; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="background: var(--ac-d);">完成本步 →</button>
+                <div style="display: flex; gap: 8px;">
+                  <button onClick="{{ groupRunBar.onPause }}" style="flex: 1; padding: 8px 12px; background: var(--card); color: var(--ink2); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--faint2);">{{ groupRunBar.pauseLabel }}</button>
+                  <button onClick="{{ groupRunBar.onStop }}" style="flex: 1; padding: 8px 12px; background: var(--card); color: var(--dg); border: 1px solid var(--dg-line); border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--dg);">中止</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <sc-for list="{{ groupCards }}" as="g" hint-placeholder-count="2">
+              <div style="{{ g.cardStyle }}">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <input value="{{ g.title }}" onChange="{{ g.onTitle }}" style="flex: 1; min-width: 0; font-size: 15px; font-weight: 700; border: 1px solid transparent; border-radius: 7px; padding: 4px 6px; font-family: inherit; outline: none; background: transparent;" style-focus="border-color: var(--ac-line); background: var(--card);">
+                  <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                    <button onClick="{{ g.onRepeatDec }}" style="width: 22px; height: 22px; border: 1px solid var(--line); background: var(--card); border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--ink2); font-family: inherit;">−</button>
+                    <span style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 13px; width: 26px; text-align: center;">{{ g.repeatStr }}</span>
+                    <button onClick="{{ g.onRepeatInc }}" style="width: 22px; height: 22px; border: 1px solid var(--line); background: var(--card); border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--ink2); font-family: inherit;">+</button>
+                  </div>
+                </div>
+                <div style="font-size: 11.5px; color: var(--faint);">{{ g.metaStr }}</div>
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="3">
+                    <div style="{{ it.rowStyle }}">
+                      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--faint); flex-shrink: 0;">{{ it.idx }}</span>
+                      <input value="{{ it.title }}" onChange="{{ it.onPatchTitle }}" style="flex: 1; min-width: 0; font-size: 13px; border: none; background: transparent; font-family: inherit; outline: none; color: inherit;">
+                      <input value="{{ it.mins }}" onChange="{{ it.onPatchMins }}" style="width: 38px; flex-shrink: 0; font-size: 11.5px; font-family: 'IBM Plex Mono', monospace; border: 1px solid var(--line); border-radius: 5px; padding: 2px 4px; outline: none; text-align: center;">
+                      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--green-tag); flex-shrink: 0;">{{ it.tags }}</span>
+                      <span onClick="{{ it.onDel }}" style="cursor: pointer; color: var(--dash); font-size: 13px; flex-shrink: 0;" style-hover="color: var(--dg);">×</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <button onClick="{{ g.onStart }}" style="flex: 1; padding: 9px; background: var(--ink); color: var(--on-fill); border: none; border-radius: 8px; font-size: 13.5px; font-weight: 700; cursor: pointer; font-family: inherit;" style-hover="background: var(--fill-d);">▶ 开始循环</button>
+                  <button onClick="{{ g.onAddItem }}" style="padding: 9px 12px; background: var(--card); color: var(--ink2); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--faint2);">+ 步骤</button>
+                  <button onClick="{{ g.onDelete }}" style="padding: 9px 11px; background: var(--card); color: var(--mut); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--dg); color: var(--dg);">🗑</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <button onClick="{{ onGroupAdd }}" style="padding: 11px; background: var(--sub); border: 1px dashed var(--dash); border-radius: 12px; font-size: 13.5px; color: var(--ink2); cursor: pointer; font-family: inherit;" style-hover="border-color: var(--ac); color: var(--ac);">+ 新建任务组</button>
+        </div>
+      </sc-if>
+
+      <!-- ============ view: 习惯（org :STYLE: habit） ============ -->
+      <sc-if value="{{ vHabits }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="习惯" style="max-width: 820px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="font-size: 13px; color: var(--mut); line-height: 1.7; max-width: 640px;">习惯 = 带 <span style="font-family: 'IBM Plex Mono', monospace;">:STYLE: habit</span> 的重复任务。每格一天，蓝色为已完成，连续性一目了然 —— 这是 org-habit 的原生构造。</div>
+          <sc-for list="{{ habitRows }}" as="h" hint-placeholder-count="3">
+            <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div style="font-size: 15px; font-weight: 700;">{{ h.title }}</div>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--green-tag); flex-shrink: 0;">{{ h.tags }}</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 700; color: var(--ac);">{{ h.streakStr }}</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--faint);">{{ h.bestStr }} · 30 天 {{ h.rate30 }}</span>
+                <div style="margin-left: auto; display: flex; gap: 8px; flex-shrink: 0;">
+                  <button onClick="{{ h.onToggle }}" style="{{ h.checkStyle }}" style-hover="opacity: .9;">{{ h.checkLabel }}</button>
+                  <button onClick="{{ h.onDelete }}" style="padding: 8px 11px; background: var(--card); color: var(--mut); border: 1px solid var(--line); border-radius: 9px; font-size: 13px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--dg); color: var(--dg);">🗑</button>
+                </div>
+              </div>
+              <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                <sc-for list="{{ h.cells }}" as="c" hint-placeholder-count="28">
+                  <div style="{{ c.style }}"></div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+          <div style="display: flex; gap: 10px;">
+            <input value="{{ habitDraft }}" onChange="{{ onHabitDraft }}" onKeyDown="{{ onHabitKey }}" placeholder="新习惯，回车添加，如  早起 6:30 :工程:" style="flex: 1; padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; font-family: inherit; background: var(--card); outline: none;" style-focus="border-color: var(--ac);">
+            <button onClick="{{ onHabitAdd }}" style="padding: 11px 20px; background: var(--ink); color: var(--on-fill); border: none; border-radius: 10px; font-size: 14px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="background: var(--fill-d);">添加习惯</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ view: 国策（RSIP 规则树） ============ -->
+      <sc-if value="{{ vRules }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="国策" style="max-width: 820px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="font-size: 13px; color: var(--mut); line-height: 1.7; max-width: 660px;">RSIP：把负面稳态回溯到「有效干预节点」，在那里立一条规则。规则是<b>层级树</b> —— 子规则是父规则的细化。<b>每天最多新增一条</b>；某条违规时，它连同所有子规则级联作废、进入回收站。</div>
+
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button onClick="{{ onRuleBumpAll }}" style="padding: 8px 16px; background: var(--card); color: var(--ok); border: 1px solid var(--ok-line); border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--ok);">今日全部坚守 +1</button>
+            <div style="font-size: 12px; color: var(--faint);">点规则展开操作 · ◆ 顶层 / ◇ 子规则</div>
+          </div>
+
+          <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px;">
+            <sc-for list="{{ ruleRows }}" as="r" hint-placeholder-count="5">
+              <div style="display: flex; flex-direction: column;">
+                <div style="{{ r.rowStyle }}" style-hover="background: var(--sub);" onClick="{{ r.onSelect }}">
+                  <span style="{{ r.bulletStyle }}">{{ r.bullet }}</span>
+                  <span style="flex: 1; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ r.title }}</span>
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ok); flex-shrink: 0;">{{ r.streakStr }}</span>
+                </div>
+                <sc-if value="{{ r.noteShow }}" hint-placeholder-val="{{ false }}">
+                  <div style="{{ r.noteStyle }}">↳ {{ r.note }}</div>
+                </sc-if>
+                <sc-if value="{{ r.selected }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin: 4px 8px 10px; padding: 12px; background: var(--sub); border: 1px solid var(--line2); border-radius: 10px; display: flex; flex-direction: column; gap: 10px;">
+                    <input value="{{ r.title }}" onChange="{{ r.onTitle }}" placeholder="规则" style="font-size: 14px; font-weight: 700; border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; font-family: inherit; outline: none;" style-focus="border-color: var(--ac);">
+                    <input value="{{ r.note }}" onChange="{{ r.onNote }}" placeholder="回溯点 / 备注" style="font-size: 12.5px; border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; font-family: inherit; outline: none; color: var(--ink2);" style-focus="border-color: var(--ac);">
+                    <div style="display: flex; gap: 8px;">
+                      <button onClick="{{ r.onAddChild }}" style="padding: 7px 14px; background: var(--card); color: var(--ac); border: 1px solid var(--ac-line); border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit;" style-hover="background: var(--ac-bg);">+ 细化子规则</button>
+                      <button onClick="{{ r.onViolate }}" style="margin-left: auto; padding: 7px 14px; background: var(--card); color: var(--dg); border: 1px solid var(--dg-line); border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--dg);">违规 · 级联作废</button>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- new rule -->
+          <div style="background: var(--sub); border: 1px dashed var(--dash); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; align-items: baseline; gap: 8px;">
+              <div style="font-size: 13.5px; font-weight: 700;">立一条新国策</div>
+              <span style="font-size: 12px; color: var(--mut);">{{ ruleDraftParentName }}</span>
+              <sc-if value="{{ ruleHasParent }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ onRuleClearParent }}" style="background: none; border: none; color: var(--ac); font-size: 12px; cursor: pointer; font-family: inherit; padding: 0;">改为顶层</button>
+              </sc-if>
+            </div>
+            <sc-if value="{{ ruleCanAdd }}" hint-placeholder-val="{{ true }}">
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; gap: 10px;">
+                  <input value="{{ ruleDraftTitle }}" onChange="{{ onRuleDraftTitle }}" placeholder="规则（具体、可执行）" style="flex: 1; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; background: var(--card);" style-focus="border-color: var(--ac);">
+                  <button onClick="{{ onRuleAdd }}" style="padding: 9px 20px; background: var(--ac); color: #fff; border: none; border-radius: 8px; font-size: 13.5px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="background: var(--ac-d);">立规</button>
+                </div>
+                <input value="{{ ruleDraftNote }}" onChange="{{ onRuleDraftNote }}" placeholder="回溯点 / 备注（可选）" style="padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 12.5px; font-family: inherit; outline: none; background: var(--card); color: var(--ink2);" style-focus="border-color: var(--ac);">
+              </div>
+            </sc-if>
+            <sc-if value="{{ ruleCannotAdd }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size: 12.5px; color: var(--warn); background: var(--warn-bg); border-radius: 8px; padding: 9px 12px;">{{ ruleLockMsg }}</div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ view: 回收站 ============ -->
+      <sc-if value="{{ vTrash }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="回收站" style="max-width: 700px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="font-size: 13px; color: var(--mut); line-height: 1.7;">软删除的条目（org <span style="font-family: 'IBM Plex Mono', monospace;">:ARCHIVE:</span> 子树）。可恢复，或永久删除。</div>
+            <sc-if value="{{ trashHasItems }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ onTrashEmpty }}" style="margin-left: auto; padding: 8px 14px; background: var(--card); color: var(--dg); border: 1px solid var(--dg-line); border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--dg);">清空回收站</button>
+            </sc-if>
+          </div>
+          <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;">
+            <sc-for list="{{ trashRows }}" as="t" hint-placeholder-count="2">
+              <div style="display: flex; align-items: center; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--line2); font-size: 14px;">
+                <span style="font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: var(--mut); background: var(--line2); border-radius: 5px; padding: 2px 8px; flex-shrink: 0;">{{ t.kind }}</span>
+                <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: line-through; color: var(--mut);">{{ t.title }}</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--faint); flex-shrink: 0; white-space: nowrap;">{{ t.when }}</span>
+                <button onClick="{{ t.onRestore }}" style="padding: 6px 12px; background: var(--card); color: var(--ac); border: 1px solid var(--ac-line); border-radius: 7px; font-size: 12.5px; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0;" style-hover="background: var(--ac-bg);">恢复</button>
+                <button onClick="{{ t.onPurge }}" style="padding: 6px 12px; background: var(--card); color: var(--mut); border: 1px solid var(--line); border-radius: 7px; font-size: 12.5px; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0;" style-hover="border-color: var(--dg); color: var(--dg);">永久删除</button>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ trashEmpty }}" hint-placeholder-val="{{ true }}">
+            <div style="color: var(--faint); font-size: 13px;">回收站是空的。删除任务 / 项目 / 国策 / 任务组 / 习惯时，会先进入这里。</div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- ============ view: 统计 ============ -->
+      <sc-if value="{{ vStats }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="统计" style="max-width: 860px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+            <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px;">
+              <div style="font-size: 12px; color: var(--mut);">本周专注</div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 28px;">{{ weekHoursStr }}</div>
+            </div>
+            <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px;">
+              <div style="font-size: 12px; color: var(--mut);">累计节点</div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 28px;">{{ totalNodesStr }}</div>
+            </div>
+            <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px;">
+              <div style="font-size: 12px; color: var(--mut);">判例数</div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 28px;">{{ caseCountStr }}</div>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px;">
+              <div style="font-size: 13.5px; font-weight: 700; margin-bottom: 12px;">每日专注（近 7 天，CLOCK 汇总）</div>
+              <div style="display: flex; align-items: flex-end; gap: 10px; height: 110px;">
+                <sc-for list="{{ bars }}" as="b" hint-placeholder-count="7">
+                  <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; height: 100%; justify-content: flex-end;">
+                    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--mut);">{{ b.val }}</div>
+                    <div style="{{ b.style }}"></div>
+                    <div style="font-size: 11px; color: var(--faint);">{{ b.label }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px;">
+              <div style="font-size: 13.5px; font-weight: 700; margin-bottom: 12px;">兵种分布（本周）</div>
+              <div style="display: flex; flex-direction: column; gap: 9px;">
+                <sc-for list="{{ tagBars }}" as="g" hint-placeholder-count="5">
+                  <div style="display: flex; align-items: center; gap: 10px; font-size: 12.5px;">
+                    <span style="width: 44px; flex-shrink: 0; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--ink2);">{{ g.label }}</span>
+                    <div style="flex: 1; height: 14px; background: var(--line2); border-radius: 4px; overflow: hidden;">
+                      <div style="{{ g.style }}"></div>
+                    </div>
+                    <span style="width: 44px; text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--mut);">{{ g.val }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px;">
+            <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px;">
+              <div style="font-size: 13.5px; font-weight: 700;">工作量证明 · 近 10 周</div>
+              <div style="font-size: 11.5px; color: var(--faint);">1 格 = 1 天，按专注时长着色</div>
+            </div>
+            <div style="display: grid; grid-template-rows: repeat(7, 14px); grid-auto-flow: column; gap: 4px; width: max-content;">
+              <sc-for list="{{ powCells }}" as="c" hint-placeholder-count="70">
+                <div style="{{ c.style }}"></div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ view: 判例 ============ -->
+      <sc-if value="{{ vCases }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="判例" style="max-width: 700px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="font-size: 13px; color: var(--mut); line-height: 1.7; max-width: 620px;">下必为例：一旦允许，永久允许。判例库就是你的「最好状态」的动态定义 —— 它只会单调增长，不可删除。</div>
+          <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;">
+            <sc-for list="{{ caseRows }}" as="c" hint-placeholder-count="2">
+              <div style="display: flex; align-items: baseline; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--line2); font-size: 14px;">
+                <span style="color: var(--ac); background: var(--ac-bg); border-radius: 5px; padding: 1px 8px; font-size: 11.5px; font-family: 'IBM Plex Mono', monospace; flex-shrink: 0;">ALLOW</span>
+                <span style="flex: 1; min-width: 0;">{{ c.text }}</span>
+                <span style="margin-left: auto; font-size: 12px; color: var(--mut); flex-shrink: 0; white-space: nowrap;">{{ c.scope }}</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--faint); flex-shrink: 0; white-space: nowrap;">{{ c.date }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ casesEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="color: var(--faint); font-size: 13px;">暂无判例。判例只能在执行中通过「疑似违规判定」产生。</div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- ============ view: 存储与备份 ============ -->
+      <sc-if value="{{ vStorage }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="存储与备份" style="max-width: 760px; display: flex; flex-direction: column; gap: 14px;">
+
+          <!-- 设置：主题 + 提醒 -->
+          <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="font-size: 15px; font-weight: 700;">应用设置</div>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <div style="font-size: 13.5px; font-weight: 700;">外观主题</div>
+                <div style="font-size: 12px; color: var(--mut);">当前：{{ themeLabel }} · 首次打开跟随系统</div>
+              </div>
+              <button onClick="{{ onToggleTheme }}" style="margin-left: auto; display: flex; align-items: center; gap: 8px; padding: 9px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; font-size: 13.5px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--faint2);">{{ themeIcon }} 切换深 / 浅色</button>
+            </div>
+            <div style="border-top: 1px solid var(--line2); padding-top: 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <div style="display: flex; flex-direction: column; gap: 2px; max-width: 440px;">
+                <div style="font-size: 13.5px; font-weight: 700;">本地提醒</div>
+                <div style="font-size: 12px; color: var(--mut); line-height: 1.6;">预约超时、任务组到点、番茄结束会通过系统通知提醒你。离线优先、无需服务器；App 完全关闭时的后台推送需额外的推送服务，此处为本地通知。</div>
+              </div>
+              <div style="margin-left: auto; display: flex; gap: 8px; flex-shrink: 0;">
+                <sc-if value="{{ notifyEnabled }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ onTestNotify }}" style="padding: 9px 14px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--faint2);">发送测试</button>
+                </sc-if>
+                <sc-if value="{{ notifyEnabled }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ onDisableNotify }}" style="padding: 9px 16px; background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok-line); border-radius: 9px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap;">✓ 已开启</button>
+                </sc-if>
+                <sc-if value="{{ notifyDisabled }}" hint-placeholder-val="{{ true }}">
+                  <button onClick="{{ onEnableNotify }}" style="padding: 9px 18px; background: var(--fill); color: var(--on-fill); border: none; border-radius: 9px; font-size: 13.5px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="background: var(--fill-d);">开启提醒</button>
+                </sc-if>
+              </div>
+              <sc-if value="{{ notifyErrShow }}" hint-placeholder-val="{{ false }}">
+                <div style="flex-basis: 100%; font-size: 12px; color: var(--dg);">{{ notifyErr }}</div>
+              </sc-if>
+            </div>
+          </div>
+
+          <!-- 本地存储 -->
+          <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <div style="font-size: 15px; font-weight: 700;">本地存储</div>
+              <div style="font-size: 12px; color: var(--mut);">浏览器自动保存 + 本地 .org 文件镜像</div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ok); background: var(--ok-bg); border-radius: 5px; padding: 2px 8px; flex-shrink: 0;">✓ 已启用</span>
+                <span>应用状态实时保存于浏览器 localStorage（每次操作即时写入，刷新不丢失）</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ok); background: var(--ok-bg); border-radius: 5px; padding: 2px 8px; flex-shrink: 0;">✓ 已启用</span>
+                <span>org 快照随状态同步保存于浏览器（与「⌘ org」抽屉内容一致）</span>
+              </div>
+            </div>
+
+            <div style="border-top: 1px solid var(--line2); padding-top: 12px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="font-size: 13.5px; font-weight: 700;">本地 .org 文件镜像</div>
+
+              <sc-if value="{{ fsSupported }}" hint-placeholder-val="{{ false }}">
+                <sc-if value="{{ fileNone }}" hint-placeholder-val="{{ true }}">
+                  <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <button onClick="{{ onConnectFile }}" style="padding: 9px 18px; background: var(--ink); color: var(--on-fill); border: none; border-radius: 8px; font-size: 13.5px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="background: var(--fill-d);">选择 / 创建 control.org</button>
+                    <span style="font-size: 12px; color: var(--mut);">连接后，每次变更自动写入该文件（去抖 1.5 秒）</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ filePending }}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: var(--ink2);">上次连接：{{ localFileName }}</span>
+                    <button onClick="{{ onReconnectFile }}" style="padding: 8px 16px; background: var(--ac); color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="background: var(--ac-d);">重新授权写入</button>
+                    <button onClick="{{ onDisconnectFile }}" style="padding: 8px 14px; background: var(--card); color: var(--mut); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--faint2);">断开</button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ fileConnected }}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ok); background: var(--ok-bg); border-radius: 5px; padding: 2px 8px; flex-shrink: 0;">● 已连接</span>
+                    <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;">{{ localFileName }}</span>
+                    <button onClick="{{ onWriteFileNow }}" style="padding: 8px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--faint2);">立即写入</button>
+                    <button onClick="{{ onDisconnectFile }}" style="padding: 8px 14px; background: var(--card); color: var(--mut); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--faint2);">断开</button>
+                  </div>
+                </sc-if>
+              </sc-if>
+              <sc-if value="{{ fsUnsupported }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size: 12.5px; color: var(--mut);">当前浏览器不支持直接写入本地文件（File System Access API，需 Chrome / Edge），可使用下方按钮手动下载备份。</div>
+              </sc-if>
+
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <a href="{{ orgHref }}" download="control.org" style="padding: 8px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; text-decoration: none; font-family: inherit; white-space: nowrap;">下载 control.org</a>
+                <a href="{{ stateHref }}" download="control.state.json" style="padding: 8px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; text-decoration: none; font-family: inherit; white-space: nowrap;">下载完整状态 .json</a>
+                <label style="padding: 8px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; cursor: pointer; white-space: nowrap;">导入状态 .json<input type="file" accept=".json,application/json" onChange="{{ onImportState }}" style="display: none;"></label>
+              </div>
+              <span style="font-size: 12px; color: var(--ac); min-height: 15px;">{{ localFileMsg }}</span>
+            </div>
+          </div>
+
+          <!-- 远端备份 -->
+          <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
+              <div style="font-size: 15px; font-weight: 700;">远端备份 · S3 兼容 API</div>
+              <div style="font-size: 12px; color: var(--mut);">Cloudflare R2 / AWS S3 / MinIO</div>
+              <div style="margin-left: auto; font-size: 12px; color: var(--faint); white-space: nowrap;">上次备份：{{ lastBackupStr }}</div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 12px; color: var(--mut);">Endpoint</span>
+                <input value="{{ s3Endpoint }}" onChange="{{ onS3Endpoint }}" placeholder="https://<account-id>.r2.cloudflarestorage.com" style="padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: 'IBM Plex Mono', monospace; outline: none; background: var(--card);" style-focus="border-color: var(--ac);">
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 12px; color: var(--mut);">Bucket</span>
+                <input value="{{ s3Bucket }}" onChange="{{ onS3Bucket }}" placeholder="control-backup" style="padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: 'IBM Plex Mono', monospace; outline: none; background: var(--card);" style-focus="border-color: var(--ac);">
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 12px; color: var(--mut);">Region（R2 固定为 auto）</span>
+                <input value="{{ s3Region }}" onChange="{{ onS3Region }}" placeholder="auto" style="padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: 'IBM Plex Mono', monospace; outline: none; background: var(--card);" style-focus="border-color: var(--ac);">
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 12px; color: var(--mut);">Access Key ID</span>
+                <input value="{{ s3Ak }}" onChange="{{ onS3Ak }}" placeholder="AKIA…" style="padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: 'IBM Plex Mono', monospace; outline: none; background: var(--card);" style-focus="border-color: var(--ac);">
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 12px; color: var(--mut);">Secret Access Key</span>
+                <input type="password" value="{{ s3Sk }}" onChange="{{ onS3Sk }}" placeholder="••••••••" style="padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: 'IBM Plex Mono', monospace; outline: none; background: var(--card);" style-focus="border-color: var(--ac);">
+              </div>
+              <div style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 12px; color: var(--mut);">对象前缀（可选）</span>
+                <input value="{{ s3Prefix }}" onChange="{{ onS3Prefix }}" placeholder="control/" style="padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: 'IBM Plex Mono', monospace; outline: none; background: var(--card);" style-focus="border-color: var(--ac);">
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button onClick="{{ onS3Test }}" style="padding: 9px 18px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 13.5px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--faint2);">测试连接</button>
+              <button onClick="{{ onS3Backup }}" style="padding: 9px 20px; background: var(--ac); color: #fff; border: none; border-radius: 8px; font-size: 13.5px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="background: var(--ac-d);">立即备份</button>
+              <button onClick="{{ onS3Restore }}" style="padding: 9px 18px; background: var(--card); color: var(--dg); border: 1px solid var(--dg-line); border-radius: 8px; font-size: 13.5px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--dg);">从远端恢复…</button>
+            </div>
+            <div style="font-size: 12.5px; color: var(--ac); min-height: 16px;">{{ s3Msg }}</div>
+
+            <div style="border-top: 1px solid var(--line2); padding-top: 10px; font-size: 12px; color: var(--mut); line-height: 1.7;">
+              备份内容：<span style="font-family: 'IBM Plex Mono', monospace;">control.org</span>（人类可读）+ <span style="font-family: 'IBM Plex Mono', monospace;">control.state.json</span>（完整状态，不含密钥）。AK/SK 仅保存在本机浏览器，不会写入备份。<br>
+              若浏览器报 CORS 错误，请在 R2 控制台 → 桶设置 → CORS 策略中添加：
+            </div>
+            <pre style="margin: 0; padding: 10px 12px; background: var(--sub); border: 1px solid var(--line2); border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 1.6; color: var(--ink2); overflow: auto;">[
+  {
+    "AllowedOrigins": ["{{ corsOrigin }}"],
+    "AllowedMethods": ["GET", "PUT", "HEAD"],
+    "AllowedHeaders": ["*"]
+  }
+]</pre>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+
+  <!-- ================= 源码 drawer ================= -->
+  <sc-if value="{{ srcOpen }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="源码抽屉" style="position: fixed; inset: 0; z-index: 50; display: flex;">
+      <div style="flex: 1; background: rgba(34,31,27,.32);" onClick="{{ onCloseSrc }}"></div>
+      <div style="width: 560px; max-width: 92vw; background: var(--card); border-left: 1px solid var(--line); display: flex; flex-direction: column; padding: 20px 22px; box-shadow: -8px 0 32px rgba(34,31,27,.12);">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 15px;">control.org</div>
+          <div style="font-size: 12px; color: var(--mut);">由应用状态实时生成</div>
+          <button onClick="{{ onCloseSrc }}" style="margin-left: auto; background: none; border: none; font-size: 20px; color: var(--mut); cursor: pointer; font-family: inherit;">×</button>
+        </div>
+        <textarea value="{{ orgSource }}" readOnly="{{ true }}" style="flex: 1; resize: none; border: 1px solid var(--line); border-radius: 10px; padding: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 1.65; color: var(--fill-d); background: var(--sub); outline: none; white-space: pre;"></textarea>
+        <div style="display: flex; gap: 10px; margin-top: 12px; align-items: center;">
+          <a href="{{ orgHref }}" download="control.org" style="padding: 9px 18px; background: var(--ink); color: var(--on-fill); border-radius: 8px; font-size: 13.5px; text-decoration: none; font-family: inherit; white-space: nowrap; flex-shrink: 0;">下载 .org</a>
+          <label style="padding: 9px 18px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 13.5px; cursor: pointer; white-space: nowrap; flex-shrink: 0;">
+            导入 .org（追加任务）<input type="file" accept=".org,.txt" onChange="{{ onImport }}" style="display: none;">
+          </label>
+          <span style="font-size: 12px; color: var(--ac);">{{ importMsg }}</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ================= 判定弹窗：主链 ================= -->
+  <sc-if value="{{ modalViolation }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="判定弹窗" style="position: fixed; inset: 0; z-index: 60; background: rgba(34,31,27,.4); display: flex; align-items: center; justify-content: center; padding: 20px;">
+      <div style="width: 460px; max-width: 100%; background: var(--card); border-radius: 16px; padding: 24px 26px; box-shadow: 0 24px 64px rgba(34,31,27,.25);">
+        <div style="font-size: 18px; font-weight: 700;">疑似违规 · 判定</div>
+        <div style="font-size: 13px; color: var(--mut); margin-top: 6px; line-height: 1.7;">{{ judgeContext }}<br>下必为例：你只有两个选项，判决即永久生效。</div>
+        <input value="{{ violationText }}" onChange="{{ onViolationText }}" placeholder="描述该行为，如：中途回复了微信消息" style="width: 100%; margin-top: 14px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; font-family: inherit; outline: none;" style-focus="border-color: var(--ac);">
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 16px;">
+          <button onClick="{{ onJudgeBreak }}" style="padding: 13px 16px; background: var(--card); border: 2px solid var(--dg); color: var(--dg); border-radius: 10px; font-size: 14.5px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: left;" style-hover="background: var(--dg-bg);">链条断裂 —— {{ heroName }} 清零，储君继位，下次从 #1 开始</button>
+          <button onClick="{{ onJudgeAllow }}" style="padding: 13px 16px; background: var(--card); border: 2px solid var(--ac); color: var(--ac); border-radius: 10px; font-size: 14.5px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: left;" style-hover="background: var(--ac-bg);">永久允许 —— 写入判例库，今后同类情况一律放行</button>
+        </div>
+        <button onClick="{{ onModalCancel }}" style="margin-top: 12px; background: none; border: none; color: var(--faint); font-size: 12.5px; cursor: pointer; font-family: inherit; padding: 0;">返回（暂不判定，继续专注）</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ================= 判定弹窗：预约链超时 ================= -->
+  <sc-if value="{{ modalAux }}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; inset: 0; z-index: 60; background: rgba(34,31,27,.4); display: flex; align-items: center; justify-content: center; padding: 20px;">
+      <div style="width: 440px; max-width: 100%; background: var(--card); border-radius: 16px; padding: 24px 26px; box-shadow: 0 24px 64px rgba(34,31,27,.25);">
+        <div style="font-size: 18px; font-weight: 700;">预约超时 · 判定</div>
+        <div style="font-size: 13px; color: var(--mut); margin-top: 6px; line-height: 1.7;">响指打了，但 15 分钟内没有坐上神圣座位。预约链 {{ auxStreakStr }} 面临判决：</div>
+        <input value="{{ violationText }}" onChange="{{ onViolationText }}" placeholder="说明情况，如：当时在户外无法开始" style="width: 100%; margin-top: 14px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; font-family: inherit; outline: none;" style-focus="border-color: var(--ac);">
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 16px;">
+          <button onClick="{{ onAuxBreak }}" style="padding: 13px 16px; background: var(--card); border: 2px solid var(--dg); color: var(--dg); border-radius: 10px; font-size: 14.5px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: left;" style-hover="background: var(--dg-bg);">预约链断裂 —— 清零，从 #1 重新积累</button>
+          <button onClick="{{ onAuxAllow }}" style="padding: 13px 16px; background: var(--card); border: 2px solid var(--ac); color: var(--ac); border-radius: 10px; font-size: 14.5px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: left;" style-hover="background: var(--ac-bg);">永久允许 —— 该情况写入判例，预约作废不罚</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ================= 链管理弹窗 ================= -->
+  <sc-if value="{{ modalChains }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="链管理弹窗" style="position: fixed; inset: 0; z-index: 60; background: rgba(34,31,27,.4); display: flex; align-items: center; justify-content: center; padding: 20px;">
+      <div style="width: 600px; max-width: 100%; max-height: 88vh; overflow-y: auto; background: var(--card); border-radius: 16px; padding: 22px 24px; box-shadow: 0 24px 64px rgba(34,31,27,.25);">
+        <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px;">
+          <div style="font-size: 18px; font-weight: 700;">管理任务链</div>
+          <button onClick="{{ onCloseChains }}" style="margin-left: auto; background: none; border: none; font-size: 20px; color: var(--mut); cursor: pointer; font-family: inherit;">×</button>
+        </div>
+        <div style="font-size: 12.5px; color: var(--mut); line-height: 1.7; margin-bottom: 16px;">精锐链对应「神圣座位」，只在最佳状态启用；普通链是它的储君 —— 精锐断裂时，连胜最长的普通链自动继位。可随时重命名、调整用途、手动校正连胜数。</div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <sc-for list="{{ chainEditRows }}" as="c" hint-placeholder-count="3">
+            <div style="border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <input value="{{ c.name }}" onChange="{{ c.onName }}" placeholder="链名称" style="flex: 1; min-width: 0; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; font-weight: 700; font-family: inherit; outline: none;" style-focus="border-color: var(--ac);">
+                <button onClick="{{ c.onSetElite }}" style="{{ c.eliteBtnStyle }}" style-hover="border-color: var(--ac);">{{ c.eliteLabel }}</button>
+                <button onClick="{{ c.onDelete }}" style="{{ c.delStyle }}" style-hover="border-color: var(--dg); color: var(--dg);">删除</button>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <input value="{{ c.desc }}" onChange="{{ c.onDesc }}" placeholder="用途描述，如：疲惫 / 碎片时间用" style="flex: 1; min-width: 0; padding: 7px 11px; border: 1px solid var(--line); border-radius: 8px; font-size: 12.5px; font-family: inherit; outline: none; color: var(--ink2);" style-focus="border-color: var(--ac);">
+                <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                  <span style="font-size: 12px; color: var(--mut);">连胜</span>
+                  <button onClick="{{ c.onDec }}" style="width: 26px; height: 26px; border: 1px solid var(--line); background: var(--card); border-radius: 7px; cursor: pointer; font-size: 15px; color: var(--ink2); font-family: inherit;" style-hover="border-color: var(--faint2);">−</button>
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 16px; width: 34px; text-align: center;">{{ c.streakStr }}</span>
+                  <button onClick="{{ c.onInc }}" style="width: 26px; height: 26px; border: 1px solid var(--line); background: var(--card); border-radius: 7px; cursor: pointer; font-size: 15px; color: var(--ink2); font-family: inherit;" style-hover="border-color: var(--faint2);">+</button>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <button onClick="{{ onAddChain }}" style="margin-top: 12px; width: 100%; padding: 11px; background: var(--sub); border: 1px dashed var(--dash); border-radius: 10px; font-size: 13.5px; color: var(--ink2); cursor: pointer; font-family: inherit;" style-hover="border-color: var(--ac); color: var(--ac);">+ 新增一条链</button>
+        <div style="font-size: 11.5px; color: var(--faint); margin-top: 10px; min-height: 14px;">{{ chainEditMsg }}</div>
+      </div>
+
+      <!-- delete confirm overlay -->
+      <sc-if value="{{ chainDelConfirm }}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; inset: 0; background: rgba(34,31,27,.45); display: flex; align-items: center; justify-content: center; padding: 20px;">
+          <div style="width: 380px; max-width: 100%; background: var(--card); border-radius: 14px; padding: 22px 24px; box-shadow: 0 20px 56px rgba(34,31,27,.3);">
+            <div style="font-size: 16px; font-weight: 700;">删除「{{ chainDelName }}」？</div>
+            <div style="font-size: 13px; color: var(--mut); margin-top: 8px; line-height: 1.7;">这条链已有记录（{{ chainDelStreak }}），删除后连胜历史将一并清除，无法恢复。</div>
+            <div style="display: flex; gap: 10px; margin-top: 18px;">
+              <button onClick="{{ onCancelDelete }}" style="flex: 1; padding: 10px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; font-size: 14px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--faint2);">取消</button>
+              <button onClick="{{ onConfirmDelete }}" style="flex: 1; padding: 10px; background: var(--dg); color: #fff; border: none; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;" style-hover="background: var(--dg-d);">确认删除</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <!-- ================= 项目删除确认 ================= -->
+  <sc-if value="{{ projDelConfirm }}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; inset: 0; z-index: 60; background: rgba(34,31,27,.4); display: flex; align-items: center; justify-content: center; padding: 20px;">
+      <div style="width: 380px; max-width: 100%; background: var(--card); border-radius: 14px; padding: 22px 24px; box-shadow: 0 20px 56px rgba(34,31,27,.3);">
+        <div style="font-size: 16px; font-weight: 700;">删除「{{ projDelName }}」及其全部子项？</div>
+        <div style="font-size: 13px; color: var(--mut); margin-top: 8px; line-height: 1.7;">这一条目下还有子任务，删除会连同整棵子树一并移除，无法恢复。</div>
+        <div style="display: flex; gap: 10px; margin-top: 18px;">
+          <button onClick="{{ onProjCancelDelete }}" style="flex: 1; padding: 10px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; font-size: 14px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--faint2);">取消</button>
+          <button onClick="{{ onProjConfirmDelete }}" style="flex: 1; padding: 10px; background: var(--dg); color: #fff; border: none; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;" style-hover="background: var(--dg-d);">确认删除</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ================= 国策违规确认 ================= -->
+  <sc-if value="{{ ruleVioConfirm }}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; inset: 0; z-index: 60; background: rgba(34,31,27,.4); display: flex; align-items: center; justify-content: center; padding: 20px;">
+      <div style="width: 420px; max-width: 100%; background: var(--card); border-radius: 16px; padding: 24px 26px; box-shadow: 0 24px 64px rgba(34,31,27,.25);">
+        <div style="font-size: 18px; font-weight: 700;">国策违规 · 级联作废</div>
+        <div style="font-size: 13px; color: var(--mut); margin-top: 8px; line-height: 1.7;">「{{ ruleVioName }}」违规。{{ ruleVioCountStr }}。<br>RSIP 的规矩：一旦违规，规则连同其下所有细化条款一并失效，需重新立规。</div>
+        <div style="display: flex; gap: 10px; margin-top: 18px;">
+          <button onClick="{{ onRuleVioCancel }}" style="flex: 1; padding: 11px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; font-size: 14px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--faint2);">取消</button>
+          <button onClick="{{ onRuleVioConfirm }}" style="flex: 1; padding: 11px; background: var(--dg); color: #fff; border: none; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;" style-hover="background: var(--dg-d);">确认违规</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = this.loadState();
+
+  defaults() {
+    return {
+      view: 'chain',
+      now: Date.now(),
+      chains: [
+        { id: 'a', name: '精锐链', elite: true, streak: 12, best: 12, created: '2026-05-28', desc: '仅最佳状态可触发' },
+        { id: 'b', name: '普通链 B', elite: false, streak: 5, best: 7, created: '2026-06-03', desc: '任意状态可执行 · 储君' },
+        { id: 'c', name: '普通链 C', elite: false, streak: 2, best: 4, created: '2026-06-08', desc: '疲惫 / 碎片时间用' }
+      ],
+      activeChainId: 'a',
+      aux: { streak: 41, active: false, endsAt: 0 },
+      session: { active: false, startedAt: 0, taskId: null, chainId: null },
+      tasks: [
+        { id: 1, kw: 'NEXT', prio: 'A', title: '论文第三章·图表绘制', tags: ':突击:', time: '14:00', sched: '<2026-06-11 Thu 14:00>', dl: '' },
+        { id: 2, kw: 'TODO', prio: 'A', title: '第三章修订', tags: ':突击:', time: '', sched: '', dl: '<2026-06-15 Mon>' },
+        { id: 3, kw: 'TODO', prio: '', title: '文献扫读·近刊', tags: ':侦查:', time: '16:30', sched: '<2026-06-11 Thu 16:30>', dl: '' },
+        { id: 4, kw: 'TODO', prio: '', title: '跑步 5km', tags: ':工程:', time: '19:00', sched: '<2026-06-11 Thu 19:00>', dl: '' },
+        { id: 5, kw: 'TODO', prio: '', title: '周报整理', tags: ':指挥:', time: '', sched: '', dl: '' },
+        { id: 6, kw: 'DONE', prio: '', title: '单词阻击·List 21', tags: ':突击:', time: '09:00', sched: '<2026-06-11 Thu 09:00>', dl: '' },
+        { id: 7, kw: 'DONE', prio: '', title: '备餐', tags: ':炊事:', time: '12:00', sched: '<2026-06-11 Thu 12:00>', dl: '' }
+      ],
+      nextTaskId: 8,
+      projects: [
+        { id: 'p1', level: 1, kw: '', prio: '', title: '论文：博士开题', tags: '', sched: '', dl: '', cookie: true, note: '' },
+        { id: 'p2', level: 2, kw: 'DONE', prio: '', title: '第一章 绪论', tags: ':写作:', sched: '', dl: '', cookie: false, note: '' },
+        { id: 'p3', level: 2, kw: 'DONE', prio: '', title: '第二章 综述', tags: ':侦查:', sched: '', dl: '', cookie: false, note: '' },
+        { id: 'p4', level: 2, kw: 'NEXT', prio: 'A', title: '第三章 方法', tags: ':突击:', sched: '2026-06-13', dl: '2026-06-20', cookie: true, note: '重点：实验设计与图表绘制' },
+        { id: 'p5', level: 3, kw: 'TODO', prio: '', title: '图表绘制', tags: '', sched: '', dl: '', cookie: false, note: '' },
+        { id: 'p6', level: 3, kw: 'TODO', prio: '', title: '修订与润色', tags: '', sched: '', dl: '', cookie: false, note: '' },
+        { id: 'p7', level: 2, kw: 'TODO', prio: 'B', title: '第四章 实验', tags: '', sched: '', dl: '', cookie: false, note: '' },
+        { id: 'p8', level: 1, kw: '', prio: '', title: '课程与杂务', tags: '', sched: '', dl: '', cookie: true, note: '' },
+        { id: 'p9', level: 2, kw: 'WAITING', prio: '', title: '课程作业·复杂系统', tags: ':特勤:', sched: '', dl: '2026-06-18', cookie: false, note: '等待助教发布数据集' },
+        { id: 'p10', level: 2, kw: 'DONE', prio: '', title: '报销单提交', tags: '', sched: '', dl: '', cookie: false, note: '' },
+        { id: 'p11', level: 2, kw: 'TODO', prio: '', title: '签证材料', tags: '', sched: '2026-06-16', dl: '', cookie: false, note: '' },
+        { id: 'p12', level: 1, kw: '', prio: '', title: '生活基建', tags: '', sched: '', dl: '', cookie: false, note: '' },
+        { id: 'p13', level: 2, kw: 'TODO', prio: '', title: '体检预约', tags: ':工程:', sched: '', dl: '', cookie: false, note: '' }
+      ],
+      collapsed: [],
+      selProj: null,
+      projDelPending: null,
+      routines: [
+        { id: 'r1', stale: '睡前刷手机', node: '带手机进卧室', action: '手机留客厅充电', trigger: '就寝前', streak: 9 },
+        { id: 'r2', stale: '洗澡拖延', node: '进门后瘫在沙发', action: '到家 15 分钟内洗澡', trigger: '进家门', streak: 4 }
+      ],
+      cases: [
+        { text: '中途上厕所（≤5 分钟）', scope: '精锐链', date: '2026-06-02' },
+        { text: '接快递电话（≤3 分钟）', scope: '精锐链', date: '2026-06-07' }
+      ],
+      log: this.seedLog(),
+      todayMins: 182,
+      todayNodes: 2,
+      totalNodes: 47,
+
+      // org LOGBOOK / CLOCK — real drawers driving streak & focus history
+      clockLog: [
+        { title: '单词阻击·List 21', chain: '精锐链', node: 11, start: '[2026-06-11 Thu 09:00]', end: '[2026-06-11 Thu 10:00]', mins: 60 },
+        { title: '备餐', chain: '精锐链', node: 12, start: '[2026-06-11 Thu 12:00]', end: '[2026-06-11 Thu 12:40]', mins: 40 }
+      ],
+
+      // 任务组 / 嵌套链 — org subtree + :REPEAT: + [/] cyclic executor
+      groups: [
+        { id: 'g1', title: '晨间启动序列', repeat: 1, items: [
+          { id: 'gi1', title: '冷水洗脸 + 拉伸', mins: 5, tags: ':工程:' },
+          { id: 'gi2', title: '回顾今日 Agenda', mins: 5, tags: ':指挥:' },
+          { id: 'gi3', title: '单词阻击一组', mins: 15, tags: ':突击:' }
+        ] },
+        { id: 'g2', title: '番茄循环 · 论文', repeat: 4, items: [
+          { id: 'gi4', title: '专注写作', mins: 25, tags: ':突击:' },
+          { id: 'gi5', title: '起身走动', mins: 5, tags: ':工程:' }
+        ] }
+      ],
+      groupRun: { active: false, groupId: null, idx: 0, cycle: 0, itemStartedAt: 0, paused: false, pausedAt: 0 },
+
+      // 习惯 — org :STYLE: habit 连续性
+      habits: [
+        { id: 'h1', title: '每日跑步 5km', tags: ':工程:', repeater: '.+1d', history: this.seedHabit(0.78, 30), best: 9 },
+        { id: 'h2', title: '睡前阅读 20min', tags: ':侦查:', repeater: '.+1d', history: this.seedHabit(0.62, 30), best: 6 },
+        { id: 'h3', title: '冥想', tags: '', repeater: '.+1d', history: this.seedHabit(0.5, 30), best: 4 }
+      ],
+
+      // RSIP 国策树 — 层级规则 + 每日限一条 + 违规级联回滚
+      rules: [
+        { id: 'k1', level: 1, title: '物理隔离干扰源', note: '所有让我失控的东西，从源头隔离', streak: 14, created: '2026-05-25' },
+        { id: 'k2', level: 2, title: '手机就寝前留客厅充电', note: '回溯点：带手机进卧室', streak: 9, created: '2026-05-28' },
+        { id: 'k3', level: 2, title: '工作时浏览器只留必要标签页', note: '回溯点：开新标签页摸鱼', streak: 6, created: '2026-06-02' },
+        { id: 'k4', level: 1, title: '到家即进入状态', note: '消除「瘫一会儿再说」的稳态', streak: 4, created: '2026-06-08' },
+        { id: 'k5', level: 2, title: '进门 15 分钟内洗澡', note: '回溯点：进门后瘫沙发', streak: 4, created: '2026-06-08' }
+      ],
+      lastRuleAddDate: '',
+      selRule: null,
+      ruleDraft: { title: '', note: '', parent: '' },
+      ruleViolatePending: null,
+
+      // 回收站 — 软删除（org :ARCHIVE:），可恢复 / 永久删除
+      trash: [],
+
+      // 押注 — 积分激励
+      points: 120,
+      bets: [
+        { id: 'bet1', desc: '今日完成第三章图表（节点 #13）', stake: 30, status: 'open', date: '2026-06-11' }
+      ],
+      betDraft: { desc: '', stake: 20 },
+
+      // 虚拟宠物 — 由近期一致性派生情绪
+      pet: { name: '阿控', fedAt: '2026-06-11' },
+
+      // PWA: 通知/提醒
+      notify: { enabled: false, err: '' },
+      navCollapsed: false,
+      theme: (function () { try { return document.documentElement.getAttribute('data-theme') || 'light'; } catch (e) { return 'light'; } })(),
+
+      captureValue: '',
+      violationText: '',
+      modal: null,
+      srcOpen: false,
+      importMsg: '',
+      rStale: '', rNode: '', rAction: '',
+      seatPick: null, seatCapture: '',
+      chainEditMsg: '', chainDelPending: null,
+      s3: { endpoint: '', region: 'auto', bucket: '', ak: '', sk: '', prefix: 'control/' },
+      s3Msg: '',
+      lastBackup: '',
+      localFileName: '',
+      localFileState: 'none',
+      localFileMsg: ''
+    };
+  }
+
+  seedLog() {
+    const out = [];
+    for (let i = 0; i < 70; i++) {
+      const v = Math.sin(i * 1.31 + 0.4) + Math.sin(i * 0.47);
+      out.push(Math.max(0, Math.round(v * 90 + 70)));
+    }
+    out[69] = 182;
+    return out;
+  }
+
+  seedHabit(rate, days) {
+    // returns ISO date strings (within last `days`) on which the habit was done
+    const out = [];
+    const today = new Date('2026-06-11T00:00:00');
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(today.getTime() - i * 86400000);
+      if (Math.abs(Math.sin(i * 2.7 + rate * 9)) < rate) {
+        out.push(d.toISOString().slice(0, 10));
+      }
+    }
+    return out;
+  }
+
+  loadState() {
+    try {
+      const raw = localStorage.getItem('control-app-v1');
+      if (raw) {
+        const saved = JSON.parse(raw);
+        const st = Object.assign({}, this.defaults(), saved, { now: Date.now(), modal: saved.modal === 'aux' ? 'aux' : null, importMsg: '', s3Msg: '', localFileMsg: '', localFileState: 'none' });
+        // migrate legacy 定式(routines) → 国策树(rules) if user had old data without rules
+        if (saved.routines && !saved.rules) {
+          st.rules = saved.routines.map((r, i) => ({ id: 'k' + i, level: 1, title: r.action, note: '回溯点：' + (r.node || '—') + '（原稳态：' + (r.stale || '—') + '）', streak: r.streak || 0, created: '2026-06-01' }));
+        }
+        // ensure new collections exist for older saves
+        if (!st.groups) st.groups = this.defaults().groups;
+        if (!st.habits) st.habits = this.defaults().habits;
+        if (!st.rules) st.rules = this.defaults().rules;
+        if (!st.trash) st.trash = [];
+        if (!st.bets) st.bets = [];
+        if (!st.clockLog) st.clockLog = [];
+        if (!st.groupRun) st.groupRun = this.defaults().groupRun;
+        if (st.points == null) st.points = 100;
+        if (!st.pet) st.pet = this.defaults().pet;
+        if (!st.notify) st.notify = { enabled: false, err: '' };
+        // theme from pre-paint bootstrap (html[data-theme])
+        try { st.theme = document.documentElement.getAttribute('data-theme') || 'light'; } catch (e) { st.theme = 'light'; }
+        // repair corrupted chain data (leftover from earlier automated testing: all "新链" @ 0)
+        const allBlank = Array.isArray(st.chains) && st.chains.length > 0 && st.chains.every(c => (c.streak || 0) === 0 && (c.best || 0) === 0 && /^新链/.test(c.name || ''));
+        if (!st.chains || !st.chains.length || allBlank) {
+          st.chains = this.defaults().chains;
+          st.activeChainId = 'a';
+          if (!st.clockLog || !st.clockLog.length) st.clockLog = this.defaults().clockLog;
+        }
+        if (!st.chains.some(c => c.elite)) st.chains[0].elite = true;
+        return st;
+      }
+    } catch (e) { /* ignore */ }
+    return this.defaults();
+  }
+
+  componentDidMount() {
+    this._t = setInterval(() => {
+      const s = this.state;
+      const now = Date.now();
+      // aux pre-timeout reminder + timeout
+      if (s.aux.active) {
+        const rem = s.aux.endsAt - now;
+        if (rem <= 120000 && rem > 119000 && !this._auxWarned) { this._auxWarned = true; this.notify('预约还剩 2 分钟', '快坐上神圣座位，别让预约链断在 15 分钟门槛上。'); }
+      } else { this._auxWarned = false; }
+      // group step time-up (fire once per step)
+      const r = s.groupRun;
+      if (r && r.active && !r.paused) {
+        const g = this.state.groups.find(x => x.id === r.groupId);
+        const it = g && g.items[r.idx];
+        if (it) {
+          const rem = (it.mins * 60) - (now - r.itemStartedAt) / 1000;
+          const key = r.groupId + ':' + r.cycle + ':' + r.idx;
+          if (rem <= 0 && this._stepKey !== key) { this._stepKey = key; this.notify('「' + it.title + '」时间到', '可以「完成本步」进入下一步了。'); }
+        }
+      }
+      if (s.aux.active && now > s.aux.endsAt && !s.modal) {
+        this.setState({ now, modal: 'aux' });
+      } else {
+        this.setState({ now });
+      }
+    }, 1000);
+    this.initLocalFile();
+    // register service worker (PWA / offline)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  }
+
+  componentWillUnmount() { if (this._t) clearInterval(this._t); if (this._fw) clearTimeout(this._fw); }
+
+  // ---------- theme ----------
+  toggleTheme() {
+    const next = (this.state.theme === 'dark') ? 'light' : 'dark';
+    try { localStorage.setItem('control-theme', next); } catch (e) { /* ignore */ }
+    try { document.documentElement.setAttribute('data-theme', next); } catch (e) { /* ignore */ }
+    this.setState({ theme: next });
+  }
+
+  // ---------- notifications / reminders ----------
+  async enableNotify() {
+    if (!('Notification' in window)) { this.setState({ notify: { enabled: false, err: '当前环境不支持通知' } }); return; }
+    let perm = Notification.permission;
+    if (perm === 'default') { try { perm = await Notification.requestPermission(); } catch (e) { /* ignore */ } }
+    this.setState({ notify: { enabled: perm === 'granted', err: perm === 'denied' ? '通知权限被拒绝，请在浏览器站点设置中开启' : '' } });
+  }
+  disableNotify() { this.setState({ notify: { enabled: false, err: '' } }); }
+  notify(title, body) {
+    if (!this.state.notify || !this.state.notify.enabled) return;
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'notify', title, body });
+      } else {
+        new Notification(title, { body, icon: 'icons/icon-192.png' });
+      }
+    } catch (e) { /* ignore */ }
+  }
+  testNotify() {
+    if (!this.state.notify || !this.state.notify.enabled) { this.enableNotify(); return; }
+    this.notify('Control 提醒已就绪', '预约超时、任务组到点、番茄结束都会这样提醒你。');
+  }
+
+  componentDidUpdate() {
+    try {
+      const c = Object.assign({}, this.state);
+      delete c.now;
+      localStorage.setItem('control-app-v1', JSON.stringify(c));
+      const org = this.buildOrg();
+      if (org !== this._lastOrg) {
+        this._lastOrg = org;
+        localStorage.setItem('control-org-v1', org);
+        if (this._fileHandle && this.state.localFileState === 'connected') {
+          clearTimeout(this._fw);
+          this._fw = setTimeout(() => this.writeLocalFile(), 1500);
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // ---------- helpers ----------
+  activeChain() { return this.state.chains.find(c => c.id === this.state.activeChainId) || this.state.chains[0]; }
+  fmtMMSS(sec) { sec = Math.max(0, Math.round(sec)); const m = Math.floor(sec / 60), s = sec % 60; return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0'); }
+  fmtHMS(sec) { sec = Math.max(0, Math.round(sec)); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0'); }
+  nextTask() { const t = this.state.tasks; return t.find(x => x.kw === 'NEXT') || t.find(x => x.kw === 'TODO') || null; }
+
+  selectedSeatTask() {
+    const s = this.state;
+    if (s.seatPick != null) {
+      const t = s.tasks.find(x => x.id === s.seatPick && x.kw !== 'DONE');
+      if (t) return t;
+    }
+    return this.nextTask();
+  }
+
+  startSession(viaAux) {
+    const task = this.selectedSeatTask();
+    const patch = {
+      session: { active: true, startedAt: Date.now(), taskId: task ? task.id : null, chainId: this.state.activeChainId },
+      aux: Object.assign({}, this.state.aux, { active: false, streak: viaAux ? this.state.aux.streak + 1 : this.state.aux.streak })
+    };
+    this.setState(patch);
+  }
+
+  buildOrg() {
+    const s = this.state;
+    const L = [];
+    L.push('#+TITLE: Control', '#+TODO: TODO NEXT | DONE CANCELLED', '#+STARTUP: overview', '');
+    L.push('* 任务链');
+    s.chains.forEach(c => {
+      L.push('** ' + (c.elite ? '★ ' : '') + c.name);
+      L.push(':PROPERTIES:');
+      L.push(':TYPE:    ' + (c.elite ? 'elite' : 'normal'));
+      L.push(':STREAK:  ' + c.streak);
+      L.push(':BEST:    ' + c.best);
+      L.push(':CREATED: [' + c.created + ']');
+      L.push(':END:');
+      // LOGBOOK with CLOCK entries for this chain (org-mode real drawer)
+      const cl = (s.clockLog || []).filter(e => e.chain === c.name);
+      if (cl.length) {
+        L.push(':LOGBOOK:');
+        cl.slice().reverse().forEach(e => {
+          const h = Math.floor(e.mins / 60), m = e.mins % 60;
+          L.push('CLOCK: ' + e.start + '--' + e.end + ' =>  ' + h + ':' + String(m).padStart(2, '0'));
+          L.push('- 节点 #' + e.node + ' “' + e.title + '” DONE ' + e.end);
+        });
+        L.push(':END:');
+      }
+    });
+    L.push('** 预约链');
+    L.push(':PROPERTIES:', ':STREAK:  ' + s.aux.streak, ':WINDOW:  15min', ':END:', '');
+    L.push('* 任务');
+    s.tasks.forEach(t => {
+      L.push('** ' + t.kw + (t.prio ? ' [#' + t.prio + ']' : '') + ' ' + t.title + (t.tags ? ' ' + t.tags : ''));
+      if (t.sched) L.push('SCHEDULED: ' + t.sched);
+      if (t.dl) L.push('DEADLINE: ' + t.dl);
+    });
+    L.push('');
+    L.push('* 项目');
+    s.projects.forEach((p, idx) => {
+      const stars = '*'.repeat(p.level + 1);
+      let head = stars + ' ' + (p.kw ? p.kw + ' ' : '') + (p.prio ? '[#' + p.prio + '] ' : '') + (p.title || '');
+      if (p.cookie) {
+        let done = 0, total = 0;
+        for (let j = idx + 1; j < s.projects.length && s.projects[j].level > p.level; j++) {
+          if (s.projects[j].level === p.level + 1 && s.projects[j].kw) { total++; if (s.projects[j].kw === 'DONE' || s.projects[j].kw === 'CANCELLED') done++; }
+        }
+        if (total) head += ' [' + done + '/' + total + ']';
+      }
+      if (p.tags) head += '  ' + p.tags;
+      L.push(head);
+      const planning = [];
+      if (p.sched) planning.push('SCHEDULED: ' + this.toOrgDate(p.sched));
+      if (p.dl) planning.push('DEADLINE: ' + this.toOrgDate(p.dl));
+      if (planning.length) L.push(stars.replace(/\*/g, ' ') + ' ' + planning.join(' '));
+      if (p.note) L.push(stars.replace(/\*/g, ' ') + '  ' + p.note);
+    });
+    L.push('');
+    L.push('* 任务组');
+    L.push(':PROPERTIES:', ':CATEGORY: 嵌套链', ':END:');
+    s.groups.forEach(g => {
+      const done = (s.groupRun && s.groupRun.active && s.groupRun.groupId === g.id) ? s.groupRun.idx + s.groupRun.cycle * g.items.length : 0;
+      const total = g.items.length * Math.max(1, g.repeat);
+      L.push('** ' + g.title + ' [' + Math.min(done, total) + '/' + total + ']');
+      L.push(':PROPERTIES:', ':REPEAT:  ' + g.repeat, ':ORDERED: t', ':END:');
+      g.items.forEach((it, i) => {
+        const cur = s.groupRun && s.groupRun.active && s.groupRun.groupId === g.id && s.groupRun.idx === i;
+        L.push('*** ' + (cur ? 'NEXT' : 'TODO') + ' ' + it.title + (it.tags ? ' ' + it.tags : ''));
+        L.push(':PROPERTIES:', ':Effort:  ' + it.mins + 'min', ':END:');
+      });
+    });
+
+    L.push('');
+    L.push('* 习惯');
+    s.habits.forEach(h => {
+      const doneToday = h.history.indexOf('2026-06-11') >= 0;
+      L.push('** ' + (doneToday ? 'DONE' : 'TODO') + ' ' + h.title + (h.tags ? ' ' + h.tags : ''));
+      L.push('SCHEDULED: <2026-06-11 Thu ' + h.repeater + '>');
+      L.push(':PROPERTIES:', ':STYLE:   habit', ':STREAK:  ' + this.habitStreak(h), ':BEST:    ' + h.best, ':END:');
+      if (h.history.length) {
+        L.push(':LOGBOOK:');
+        h.history.slice(-8).reverse().forEach(d => L.push('- State "DONE"       from "TODO"       [' + d + ']'));
+        L.push(':END:');
+      }
+    });
+
+    L.push('');
+    L.push('* 国策');
+    L.push(':PROPERTIES:', ':DESC: RSIP 层级规则树 · 每日限新增一条 · 违规级联回滚', ':END:');
+    s.rules.forEach(r => {
+      L.push('*'.repeat(r.level + 1) + ' ACTIVE ' + r.title + ' :国策:');
+      L.push(':PROPERTIES:', ':STREAK:  ' + r.streak, ':CREATED: [' + r.created + ']', ':END:');
+      if (r.note) L.push('  ' + r.note);
+    });
+
+    L.push('');
+    L.push('* 判例');
+    s.cases.forEach(c => L.push('** ALLOW ' + c.text + '  :' + c.scope + ':' + '\n[' + c.date + ']'));
+    if (!s.cases.length) L.push('（暂无）');
+
+    L.push('');
+    L.push('* 积分');
+    L.push(':PROPERTIES:', ':POINTS: ' + s.points, ':END:');
+    s.bets.forEach(b => {
+      const kw = b.status === 'won' ? 'DONE' : b.status === 'lost' ? 'CANCELLED' : 'TODO';
+      L.push('** ' + kw + ' [押注 ' + b.stake + '] ' + b.desc);
+      L.push(':PROPERTIES:', ':STAKE: ' + b.stake, ':DATE:  [' + b.date + ']', ':END:');
+    });
+
+    L.push('');
+    L.push('* 回收站');
+    L.push(':PROPERTIES:', ':ARCHIVE: t', ':END:');
+    if (!s.trash.length) L.push('（空）');
+    s.trash.forEach(t => {
+      L.push('** CANCELLED ' + t.title + '  :' + t.kind + ':');
+      L.push(':PROPERTIES:', ':ARCHIVE_TIME: [' + t.deletedAt + ']', ':SOURCE: ' + t.kind, ':END:');
+    });
+
+    return L.join('\n');
+  }
+
+  // ---------- render ----------
+  renderVals() {
+    const s = this.state;
+    const now = s.now || Date.now();
+    const INK = 'var(--ink)', MUT = 'var(--mut)', LINE = 'var(--line)', AC = 'var(--ac)', DG = 'var(--dg)';
+    const chain = this.activeChain();
+    const task = this.nextTask();
+    const set = p => this.setState(p);
+
+    // nav
+    const navDefs = [
+      { id: 'chain', label: '任务链', icon: '链', badge: '#' + chain.streak },
+      { id: 'agenda', label: '今日', icon: '今', badge: String(s.tasks.filter(t => t.kw !== 'DONE').length) },
+      { id: 'projects', label: '项目', icon: '项', badge: '' },
+      { id: 'groups', label: '任务组', icon: '组', badge: String(s.groups.length) },
+      { id: 'habits', label: '习惯', icon: '习', badge: String(s.habits.length) },
+      { id: 'rules', label: '国策', icon: '策', badge: String(s.rules.length) },
+      { id: 'stats', label: '统计', icon: '统', badge: '' },
+      { id: 'cases', label: '判例', icon: '判', badge: String(s.cases.length) },
+      { id: 'trash', label: '回收站', icon: '收', badge: s.trash.length ? String(s.trash.length) : '' },
+      { id: 'storage', label: '存储', icon: '存', badge: s.lastBackup ? '✓' : '' }
+    ];
+    const navItems = navDefs.map(n => ({
+      label: n.label,
+      icon: n.icon,
+      badge: n.badge,
+      itemClass: 'nav-item' + (n.badge ? ' has-badge' : ''),
+      badgeStyle: { marginLeft: 'auto', fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', color: s.view === n.id ? AC : 'var(--faint)' },
+      onClick: () => set({ view: n.id }),
+      style: {
+        display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', borderRadius: '8px', cursor: 'pointer',
+        fontSize: '14px', fontWeight: s.view === n.id ? 700 : 400,
+        background: s.view === n.id ? 'var(--line2)' : 'transparent',
+        color: s.view === n.id ? INK : 'var(--ink2)'
+      }
+    }));
+    const titles = { chain: '任务链', agenda: '今日 Agenda', projects: '项目大纲', groups: '任务组 · 嵌套链', habits: '习惯 · 连续性', rules: '国策 · RSIP 规则树', stats: '统计', cases: '判例库', trash: '回收站', storage: '存储与备份' };
+
+    // aux
+    const auxRemain = (s.aux.endsAt - now) / 1000;
+    const auxFrac = Math.max(0, Math.min(1, auxRemain / 900));
+    const auxRing = {
+      width: '112px', height: '112px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'conic-gradient(' + AC + ' ' + (auxFrac * 100) + '%, var(--ring-track) 0)',
+      animation: 'ctrlPulse 2s infinite'
+    };
+
+    // session
+    const sess = s.session;
+    const sessElapsed = sess.active ? (now - sess.startedAt) / 1000 : 0;
+    const sessTask = sess.active ? (s.tasks.find(t => t.id === sess.taskId) || task) : null;
+    const pomoLen = 25 * 60;
+    const pomoElapsed = sessElapsed % pomoLen;
+    const pomoIdx = Math.floor(sessElapsed / pomoLen) + 1;
+    const pomoFrac = pomoElapsed / pomoLen;
+    const pomoRingStyle = {
+      width: '58px', height: '58px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      background: 'conic-gradient(' + INK + ' ' + (pomoFrac * 100) + '%, var(--pomo-track) 0)'
+    };
+    const sessOrg = sessTask
+      ? '* NEXT' + (sessTask.prio ? ' [#' + sessTask.prio + ']' : '') + ' ' + sessTask.title + ' ' + sessTask.tags +
+        '\n:PROPERTIES:\n:CHAIN: ' + chain.name + '\n:NODE:  ' + (chain.streak + 1) + '\n:END:\nCLOCK: [运行中 ' + this.fmtHMS(sessElapsed) + ']'
+      : '';
+
+    // hero dots
+    const total = Math.min(chain.streak, 14);
+    const start = chain.streak - total;
+    const dots = [];
+    for (let i = 0; i < total; i++) {
+      dots.push({
+        label: '#' + (start + i + 1),
+        style: { width: '30px', height: '30px', borderRadius: '50%', background: INK, color: 'var(--on-fill)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', flexShrink: 0 }
+      });
+    }
+    dots.push({ label: '', style: { width: '30px', height: '30px', borderRadius: '50%', border: '2px solid ' + AC, boxSizing: 'border-box', flexShrink: 0, background: sess.active ? 'var(--ac-bg)' : 'var(--card)' } });
+    for (let i = 0; i < 2; i++) dots.push({ label: '', style: { width: '30px', height: '30px', borderRadius: '50%', border: '2px dashed var(--dash)', boxSizing: 'border-box', flexShrink: 0 } });
+
+    // chain cards
+    const heir = s.chains.filter(c => !c.elite).slice().sort((a, b) => b.streak - a.streak)[0];
+    const heirId = heir ? heir.id : null;
+    const chainCards = s.chains.map(c => {
+      const active = c.id === s.activeChainId;
+      const isHeir = c.id === heirId && !c.elite;
+      return {
+        name: c.name,
+        badge: c.elite ? '★ 精锐' : (isHeir ? '储君' : ''),
+        badgeStyle: { fontSize: '11px', color: c.elite ? AC : MUT, background: c.elite ? 'var(--ac-bg)' : 'var(--line2)', borderRadius: '5px', padding: '1px 7px', whiteSpace: 'nowrap', flexShrink: 0, display: (c.elite || isHeir) ? 'inline' : 'none' },
+        streakStr: '#' + c.streak,
+        desc: c.desc,
+        onClick: () => set({ activeChainId: c.id }),
+        onEdit: (e) => { if (e && e.stopPropagation) e.stopPropagation(); set({ modal: 'chains' }); },
+        style: {
+          background: 'var(--card)', borderRadius: '12px', padding: '14px 16px', cursor: 'pointer',
+          border: active ? '1.5px solid ' + INK : '1px solid ' + LINE,
+          boxShadow: active ? '0 2px 8px rgba(34,31,27,.08)' : 'none'
+        }
+      };
+    });
+
+    // chain management
+    const patchChain = (id, patch) => set({ chains: s.chains.map(c => c.id === id ? Object.assign({}, c, patch) : c) });
+    const setElite = id => set({ chains: s.chains.map(c => Object.assign({}, c, { elite: c.id === id })), activeChainId: id });
+    const bumpStreak = (id, d) => set({ chains: s.chains.map(c => c.id === id ? Object.assign({}, c, { streak: Math.max(0, c.streak + d), best: Math.max(c.best, Math.max(0, c.streak + d)) }) : c) });
+    const performDelete = id => {
+      if (s.chains.length <= 1) { set({ chainEditMsg: '至少保留一条链', chainDelPending: null }); return; }
+      const rest = s.chains.filter(c => c.id !== id);
+      const wasElite = (s.chains.find(c => c.id === id) || {}).elite;
+      if (wasElite) { const heir = rest.slice().sort((a, b) => b.streak - a.streak)[0]; heir.elite = true; }
+      const patch = { chains: rest, chainEditMsg: '', chainDelPending: null };
+      if (s.activeChainId === id) patch.activeChainId = (rest.find(c => c.elite) || rest[0]).id;
+      if (s.session && s.session.active && s.session.chainId === id) patch.session = { active: false, startedAt: 0, taskId: null, chainId: null };
+      set(patch);
+    };
+    const requestDelete = id => {
+      if (s.chains.length <= 1) { set({ chainEditMsg: '至少保留一条链' }); return; }
+      const c = s.chains.find(x => x.id === id);
+      const hasRecord = c && (c.streak > 0 || c.best > 0);
+      if (hasRecord) set({ chainDelPending: id });
+      else performDelete(id);
+    };
+    const delPendingChain = s.chains.find(c => c.id === s.chainDelPending) || null;
+    const addChain = () => {
+      const id = 'c' + Date.now();
+      set({ chains: s.chains.concat([{ id, name: '新链', elite: false, streak: 0, best: 0, created: this.orgDate().slice(0, 10), desc: '点此编辑用途' }]), chainEditMsg: '已新增，可重命名' });
+    };
+    const chainEditRows = s.chains.map(c => ({
+      name: c.name,
+      desc: c.desc,
+      streakStr: '#' + c.streak,
+      eliteLabel: c.elite ? '★ 精锐' : '设为精锐',
+      eliteBtnStyle: { padding: '7px 12px', borderRadius: '8px', fontSize: '12.5px', fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, border: '1px solid ' + (c.elite ? AC : 'var(--line)'), background: c.elite ? 'var(--ac-bg)' : 'var(--card)', color: c.elite ? AC : 'var(--ink2)', fontWeight: c.elite ? 700 : 400 },
+      delStyle: { padding: '7px 12px', borderRadius: '8px', fontSize: '12.5px', fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--mut)' },
+      onName: e => patchChain(c.id, { name: e.target.value }),
+      onDesc: e => patchChain(c.id, { desc: e.target.value }),
+      onSetElite: () => setElite(c.id),
+      onDelete: () => requestDelete(c.id),
+      onInc: () => bumpStreak(c.id, 1),
+      onDec: () => bumpStreak(c.id, -1)
+    }));
+
+    // agenda rows
+    const kwColors = { TODO: { c: 'var(--warn)', bg: 'var(--warn-bg)' }, NEXT: { c: AC, bg: 'var(--ac-bg)' }, WAITING: { c: 'var(--purple)', bg: 'var(--purple-bg)' }, DONE: { c: MUT, bg: 'var(--line2)' }, CANCELLED: { c: 'var(--faint)', bg: 'var(--line2)' } };
+    const agendaRows = s.tasks.map(t => {
+      const done = t.kw === 'DONE';
+      const kc = kwColors[t.kw] || kwColors.TODO;
+      return {
+        kw: t.kw + (t.prio ? ' [#' + t.prio + ']' : ''),
+        kwStyle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', color: kc.c, background: kc.bg, borderRadius: '5px', padding: '2px 8px', flexShrink: 0 },
+        title: t.title,
+        titleStyle: { fontSize: '14px', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: done ? 'line-through' : 'none', color: done ? 'var(--faint)' : INK },
+        tags: t.tags,
+        meta: t.dl ? 'DEADLINE ' + t.dl : (t.sched ? 'SCHEDULED ' + t.sched : ''),
+        metaStyle: { marginLeft: 'auto', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10.5px', color: t.dl ? DG : 'var(--faint)', flexShrink: 0, whiteSpace: 'nowrap' },
+        checkLabel: done ? '✓' : '',
+        checkStyle: { width: '19px', height: '19px', borderRadius: '5px', border: done ? 'none' : '1.5px solid var(--dash)', background: done ? INK : 'var(--card)', color: 'var(--on-fill)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer', flexShrink: 0 },
+        onToggle: () => {
+          const tasks = s.tasks.map(x => x.id === t.id ? Object.assign({}, x, { kw: x.kw === 'DONE' ? 'TODO' : 'DONE' }) : x);
+          set({ tasks });
+        },
+        rowStyle: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 18px', borderBottom: '1px solid var(--line2)' }
+      };
+    });
+
+    // mini agenda
+    const miniTasks = s.tasks.filter(t => t.time).slice(0, 4).map(t => ({
+      time: t.time,
+      title: t.title,
+      tag: t.tags,
+      style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: t.kw === 'DONE' ? 'line-through' : 'none', color: t.kw === 'DONE' ? 'var(--faint)' : INK }
+    }));
+
+    // projects — org outline editor
+    const collapsed = s.collapsed || [];
+    const parr = s.projects;
+    const selProj = s.selProj;
+    const projRows = [];
+    let hideLevel = 0;
+    parr.forEach((p, idx) => {
+      if (hideLevel && p.level > hideLevel) return;
+      hideLevel = 0;
+      const next = parr[idx + 1];
+      const hasKids = next && next.level > p.level;
+      const isCollapsed = collapsed.indexOf(p.id) >= 0;
+      if (isCollapsed) hideLevel = p.level;
+      const kc = kwColors[p.kw];
+      const sel = p.id === selProj;
+      const isDone = p.kw === 'DONE' || p.kw === 'CANCELLED';
+
+      // cookie [done/total] over direct children
+      let cookieStr = '';
+      if (p.cookie) {
+        let done = 0, total = 0;
+        for (let j = idx + 1; j < parr.length && parr[j].level > p.level; j++) {
+          if (parr[j].level === p.level + 1 && parr[j].kw) { total++; if (parr[j].kw === 'DONE' || parr[j].kw === 'CANCELLED') done++; }
+        }
+        if (total) cookieStr = '[' + done + '/' + total + ']';
+      }
+
+      const id = p.id;
+      projRows.push({
+        // fold
+        arrow: hasKids ? (isCollapsed ? '▸' : '▾') : '·',
+        arrowStyle: { width: '15px', flexShrink: 0, color: hasKids ? 'var(--mut)' : 'var(--faint2)', fontSize: '11px', cursor: hasKids ? 'pointer' : 'default', textAlign: 'center' },
+        onToggle: e => { if (e && e.stopPropagation) e.stopPropagation(); if (!hasKids) return; const c = collapsed.indexOf(id) >= 0 ? collapsed.filter(x => x !== id) : collapsed.concat([id]); set({ collapsed: c }); },
+        stars: '*'.repeat(p.level + 1),
+        starsStyle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', color: 'var(--faint2)', flexShrink: 0 },
+        // keyword (click cycles)
+        kw: p.kw || '标记',
+        kwStyle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', color: kc ? kc.c : 'var(--faint)', background: kc ? kc.bg : 'transparent', border: kc ? 'none' : '1px dashed var(--faint2)', borderRadius: '5px', padding: '1px 7px', flexShrink: 0, cursor: 'pointer' },
+        onCycleKw: e => { if (e && e.stopPropagation) e.stopPropagation(); this.projCycleKw(id); },
+        // priority
+        prio: p.prio ? '[#' + p.prio + ']' : '[#]',
+        prioStyle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', color: p.prio ? (p.prio === 'A' ? 'var(--dg)' : p.prio === 'B' ? 'var(--warn)' : 'var(--mut)') : 'var(--faint2)', flexShrink: 0, cursor: 'pointer', display: p.kw ? 'inline' : 'none' },
+        onCyclePrio: e => { if (e && e.stopPropagation) e.stopPropagation(); this.projCyclePrio(id); },
+        // title — span or input when selected
+        title: p.title,
+        editing: sel,
+        notEditing: !sel,
+        stop: e => { if (e && e.stopPropagation) e.stopPropagation(); },
+        titleStyle: { fontSize: '14px', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: p.level === 1 ? 700 : 400, textDecoration: isDone ? 'line-through' : 'none', color: isDone ? 'var(--faint)' : INK },
+        titleInputStyle: { flex: 1, minWidth: 0, fontSize: '14px', fontWeight: p.level === 1 ? 700 : 400, fontFamily: 'inherit', border: '1px solid var(--ac-line)', borderRadius: '6px', padding: '4px 8px', outline: 'none', color: INK },
+        onTitle: e => this.projPatch(id, { title: e.target.value }),
+        onTitleKey: e => { if (e.key === 'Enter') { e.preventDefault(); this.projAddSibling(id); } },
+        // tags
+        tags: p.tags || '',
+        tagsStyle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', color: 'var(--green-tag)', flexShrink: 0, display: p.tags ? 'inline' : 'none' },
+        // cookie
+        cookieStr,
+        cookieStyle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '11.5px', color: 'var(--mut)', flexShrink: 0, display: cookieStr ? 'inline' : 'none' },
+        // planning chips
+        schedChip: p.sched ? 'S ' + this.toOrgDate(p.sched).replace(/[<>]/g, '') : '',
+        schedStyle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '10.5px', color: 'var(--ac)', background: 'var(--ac-bg)', borderRadius: '5px', padding: '1px 6px', flexShrink: 0, display: p.sched ? 'inline' : 'none' },
+        dlChip: p.dl ? 'D ' + this.toOrgDate(p.dl).replace(/[<>]/g, '') : '',
+        dlStyle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '10.5px', color: 'var(--dg)', background: 'var(--dg-bg)', borderRadius: '5px', padding: '1px 6px', flexShrink: 0, display: p.dl ? 'inline' : 'none' },
+        // note
+        note: p.note || '',
+        noteShow: !!p.note && !sel,
+        noteStyle: { fontSize: '12px', color: 'var(--faint)', paddingLeft: (15 + 6 + (p.level - 1) * 22) + 'px', marginTop: '-2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+        // row
+        onSelect: () => set({ selProj: sel ? null : id }),
+        rowStyle: { display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', paddingLeft: (12 + (p.level - 1) * 22) + 'px', borderRadius: '8px', cursor: 'pointer', background: sel ? 'var(--ac-bg)' : 'transparent', border: sel ? '1px solid var(--ac-line)' : '1px solid transparent' },
+        // selected toolbar
+        selected: sel,
+        schedIso: p.sched || '',
+        dlIso: p.dl || '',
+        onSched: e => this.projPatch(id, { sched: e.target.value }),
+        onDl: e => this.projPatch(id, { dl: e.target.value }),
+        tagsValue: p.tags || '',
+        onTags: e => { let v = e.target.value.trim(); if (v && !/^:.*:$/.test(v)) { v = ':' + v.replace(/^:+|:+$/g, '').split(/[\s:]+/).filter(Boolean).join(':') + ':'; } this.projPatch(id, { tags: v }); },
+        noteValue: p.note || '',
+        onNote: e => this.projPatch(id, { note: e.target.value }),
+        cookieOn: !!p.cookie,
+        onToggleCookie: () => this.projPatch(id, { cookie: !p.cookie }),
+        cookieBtnStyle: { padding: '6px 10px', borderRadius: '7px', fontSize: '12px', fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', border: '1px solid ' + (p.cookie ? AC : 'var(--line)'), background: p.cookie ? 'var(--ac-bg)' : 'var(--card)', color: p.cookie ? AC : 'var(--ink2)' },
+        onOutdent: () => this.projOutdent(id),
+        onIndent: () => this.projIndent(id),
+        onUp: () => this.projMoveUp(id),
+        onDown: () => this.projMoveDown(id),
+        onAddChild: () => this.projAddChild(id),
+        onAddSibling: () => this.projAddSibling(id),
+        onDelete: () => this.projRequestDelete(id)
+      });
+    });
+    const projDelP = parr.find(p => p.id === s.projDelPending) || null;
+
+    // routines
+    const routineCards = s.routines.map(r => ({
+      stale: r.stale, node: r.node, action: r.action, trigger: r.trigger,
+      streakStr: '#' + r.streak,
+      onDone: () => set({ routines: s.routines.map(x => x.id === r.id ? Object.assign({}, x, { streak: x.streak + 1 }) : x) }),
+      onBreak: () => set({ routines: s.routines.map(x => x.id === r.id ? Object.assign({}, x, { streak: 0 }) : x) })
+    }));
+
+    // stats
+    const last7 = s.log.slice(-7);
+    const maxV = Math.max.apply(null, last7.concat([1]));
+    const dayNames = ['五', '六', '日', '一', '二', '三', '四'];
+    const bars = last7.map((v, i) => ({
+      val: (v / 60).toFixed(1) + 'h',
+      label: dayNames[i],
+      style: { width: '100%', height: Math.max(4, Math.round(v / maxV * 70)) + 'px', background: i === 6 ? AC : 'var(--hm1)', borderRadius: '4px 4px 0 0' }
+    }));
+    const shades = ['var(--line2)', 'var(--hm1)', 'var(--hm2)', AC];
+    const powCells = s.log.map(v => ({
+      style: { width: '14px', height: '14px', borderRadius: '3px', background: shades[v <= 10 ? 0 : v < 90 ? 1 : v < 180 ? 2 : 3] }
+    }));
+    const weekMins = last7.reduce((a, b) => a + b, 0);
+    const tagData = [['突击', 540], ['侦查', 150], ['指挥', 80], ['工程', 110], ['炊事', 45]];
+    const tagMax = 540;
+    const tagBars = tagData.map(d => ({
+      label: d[0],
+      val: (d[1] / 60).toFixed(1) + 'h',
+      style: { width: Math.round(d[1] / tagMax * 100) + '%', height: '100%', background: 'var(--hm2)', borderRadius: '4px' }
+    }));
+
+    // cases
+    const caseRows = s.cases.map(c => ({ text: c.text, scope: ':' + c.scope + ':', date: '[' + c.date + ']' }));
+
+    // judging actions
+    const judgeBreak = () => {
+      const text = s.violationText.trim();
+      const chains = s.chains.map(c => Object.assign({}, c));
+      const me = chains.find(c => c.id === s.activeChainId);
+      const wasElite = me.elite;
+      me.streak = 0;
+      if (wasElite) {
+        me.elite = false;
+        const heir = chains.filter(c => c.id !== me.id).sort((a, b) => b.streak - a.streak)[0];
+        if (heir) heir.elite = true;
+        const newElite = chains.find(c => c.elite) || me;
+        set({ chains, activeChainId: newElite.id, session: { active: false, startedAt: 0, taskId: null, chainId: null }, modal: null, violationText: '' });
+      } else {
+        set({ chains, session: { active: false, startedAt: 0, taskId: null, chainId: null }, modal: null, violationText: '' });
+      }
+    };
+    const judgeAllow = () => {
+      const text = s.violationText.trim() || '（未描述的行为）';
+      const cases = s.cases.concat([{ text, scope: chain.name, date: this.orgDate() }]);
+      set({ cases, modal: null, violationText: '' });
+    };
+    const auxBreak = () => set({ aux: { streak: 0, active: false, endsAt: 0 }, modal: null, violationText: '' });
+    const auxAllow = () => {
+      const text = s.violationText.trim() || '（未描述的情况）';
+      set({ cases: s.cases.concat([{ text, scope: '预约链', date: this.orgDate() }]), aux: Object.assign({}, s.aux, { active: false, endsAt: 0 }), modal: null, violationText: '' });
+    };
+
+    // complete node
+    const completeNode = () => {
+      const mins = Math.max(1, Math.round(sessElapsed / 60));
+      const chains = s.chains.map(c => {
+        if (c.id !== sess.chainId) return c;
+        const streak = c.streak + 1;
+        return Object.assign({}, c, { streak, best: Math.max(c.best, streak) });
+      });
+      const tasks = sessTask ? s.tasks.map(t => t.id === sessTask.id ? Object.assign({}, t, { kw: 'DONE' }) : t) : s.tasks;
+      const log = s.log.slice();
+      log[log.length - 1] = (log[log.length - 1] || 0) + mins;
+      const clockLog = s.clockLog.concat([{
+        title: sessTask ? sessTask.title : '专注', chain: chain.name, node: chain.streak + 1,
+        start: this.stampPlus(mins), end: this.nowStamp(), mins
+      }]);
+      set({
+        chains, tasks, log, clockLog,
+        todayMins: s.todayMins + mins,
+        todayNodes: s.todayNodes + 1,
+        totalNodes: s.totalNodes + 1,
+        points: s.points + 3,
+        session: { active: false, startedAt: 0, taskId: null, chainId: null }
+      });
+    };
+
+    // capture
+    const doCapture = () => {
+      const v = s.captureValue.trim();
+      if (!v) return;
+      const m = v.match(/^(.*?)\s*(:(?:[^:\s]+:)+)?$/);
+      const t = { id: s.nextTaskId, kw: 'TODO', prio: '', title: (m && m[1] ? m[1] : v).trim(), tags: (m && m[2]) || '', time: '', sched: '', dl: '' };
+      set({ tasks: s.tasks.concat([t]), nextTaskId: s.nextTaskId + 1, captureValue: '' });
+    };
+
+    // seat: pick from today's TODO/NEXT + inline capture
+    const seatSel = this.selectedSeatTask();
+    const seatSelId = seatSel ? seatSel.id : null;
+    const seatTasks = s.tasks.filter(t => t.kw !== 'DONE').map(t => {
+      const on = t.id === seatSelId;
+      const kc = kwColors[t.kw] || kwColors.TODO;
+      return {
+        kw: t.kw + (t.prio ? ' [#' + t.prio + ']' : ''),
+        kwStyle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '10.5px', color: kc.c, background: kc.bg, borderRadius: '5px', padding: '1px 7px', flexShrink: 0 },
+        title: t.title,
+        titleStyle: { fontSize: '13.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--ink)' },
+        tags: t.tags,
+        meta: t.dl ? 'DDL ' + t.dl.replace(/[<>]/g, '') : (t.time || ''),
+        metaStyle: { marginLeft: 'auto', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10.5px', color: t.dl ? DG : 'var(--faint)', flexShrink: 0 },
+        radio: on ? '●' : '○',
+        radioStyle: { fontSize: '13px', color: on ? AC : 'var(--dash)', flexShrink: 0, width: '14px' },
+        onPick: () => set({ seatPick: t.id }),
+        style: { display: 'flex', alignItems: 'center', gap: '9px', padding: '8px 11px', borderRadius: '8px', cursor: 'pointer', border: on ? '1.5px solid ' + AC : '1px solid var(--line2)', background: on ? 'var(--ac-bg)' : 'var(--card)' }
+      };
+    });
+    const doSeatCapture = () => {
+      const v = (s.seatCapture || '').trim();
+      if (!v) return;
+      const m = v.match(/^(.*?)\s*(:(?:[^:\s]+:)+)?$/);
+      const id = s.nextTaskId;
+      const t = { id, kw: 'TODO', prio: '', title: (m && m[1] ? m[1] : v).trim(), tags: (m && m[2]) || '', time: '', sched: '', dl: '' };
+      set({ tasks: s.tasks.concat([t]), nextTaskId: id + 1, seatCapture: '', seatPick: id });
+    };
+
+    // import
+    const onImport = e => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = String(reader.result || '');
+        const re = /^\*+\s+(?:(TODO|NEXT|DONE)\s+)?(?:\[#([ABC])\]\s+)?(.+?)(\s+:(?:[^:\s]+:)+)?\s*$/gm;
+        let m, added = 0;
+        const tasks = this.state.tasks.slice();
+        let nid = this.state.nextTaskId;
+        while ((m = re.exec(text)) !== null) {
+          if (!m[1]) continue;
+          tasks.push({ id: nid++, kw: m[1], prio: m[2] || '', title: m[3].trim(), tags: (m[4] || '').trim(), time: '', sched: '', dl: '' });
+          added++;
+        }
+        this.setState({ tasks, nextTaskId: nid, importMsg: '已导入 ' + added + ' 条任务' });
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    };
+
+    // storage view helpers
+    const s3cfg = s.s3 || {};
+    const mkS3 = f => e => set({ s3: Object.assign({}, s3cfg, { [f]: e.target.value }) });
+    const fsSupported = typeof window.showSaveFilePicker === 'function';
+    const stateJson = JSON.stringify(this.s3Snapshot(), null, 2);
+    const onImportState = e => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(String(reader.result || ''));
+          this.setState(Object.assign({}, this.defaults(), data, {
+            s3: this.state.s3, now: Date.now(), view: 'storage',
+            localFileName: this.state.localFileName, localFileState: this.state.localFileState,
+            localFileMsg: '✓ 已导入状态文件'
+          }));
+        } catch (err) {
+          this.setState({ localFileMsg: '✕ 导入失败：不是合法的状态 JSON' });
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    };
+
+    // ===== 任务组 循环执行器 =====
+    const run = s.groupRun || { active: false };
+    const runGroup = run.active ? s.groups.find(g => g.id === run.groupId) : null;
+    let runItem = null, runItemRemain = 0, runItemFrac = 0, runTotalSteps = 0, runDoneSteps = 0;
+    if (runGroup) {
+      runItem = runGroup.items[run.idx];
+      const elapsed = run.paused ? (run.pausedAt - run.itemStartedAt) / 1000 : (now - run.itemStartedAt) / 1000;
+      const dur = (runItem ? runItem.mins : 1) * 60;
+      runItemRemain = dur - elapsed;
+      runItemFrac = Math.max(0, Math.min(1, elapsed / dur));
+      runTotalSteps = runGroup.items.length * Math.max(1, runGroup.repeat);
+      runDoneSteps = run.cycle * runGroup.items.length + run.idx;
+    }
+    const groupCards = s.groups.map(g => {
+      const isRunning = run.active && run.groupId === g.id;
+      const totalMin = g.items.reduce((a, b) => a + (b.mins || 0), 0) * Math.max(1, g.repeat);
+      return {
+        id: g.id, title: g.title,
+        running: isRunning,
+        repeatStr: '×' + g.repeat,
+        metaStr: g.items.length + ' 步 · 单轮 ' + g.items.reduce((a, b) => a + (b.mins || 0), 0) + ' 分 · 共 ' + totalMin + ' 分',
+        cardStyle: { background: 'var(--card)', border: isRunning ? '1.5px solid ' + AC : '1px solid ' + LINE, borderRadius: '14px', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: isRunning ? '0 2px 10px rgba(59,95,196,.12)' : 'none' },
+        items: g.items.map((it, i) => ({
+          idx: i + 1,
+          title: it.title, mins: it.mins + 'm', tags: it.tags || '',
+          cur: isRunning && run.idx === i,
+          rowStyle: { display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 9px', borderRadius: '7px', fontSize: '13px', background: (isRunning && run.idx === i) ? 'var(--ac-bg)' : 'var(--sub)', color: (isRunning && run.idx === i) ? AC : 'var(--ink2)', fontWeight: (isRunning && run.idx === i) ? 700 : 400 },
+          onPatchTitle: e => this.groupPatchItem(g.id, it.id, { title: e.target.value }),
+          onPatchMins: e => this.groupPatchItem(g.id, it.id, { mins: Math.max(1, parseInt(e.target.value, 10) || 1) }),
+          onDel: () => this.groupDelItem(g.id, it.id)
+        })),
+        onStart: () => this.groupStart(g.id),
+        onAddItem: () => this.groupAddItem(g.id),
+        onDelete: () => this.groupDelete(g.id),
+        onTitle: e => this.groupPatch(g.id, { title: e.target.value }),
+        onRepeatDec: () => this.groupPatch(g.id, { repeat: Math.max(1, g.repeat - 1) }),
+        onRepeatInc: () => this.groupPatch(g.id, { repeat: g.repeat + 1 })
+      };
+    });
+    const groupRunBar = runGroup ? {
+      title: runGroup.title,
+      itemTitle: runItem ? runItem.title : '—',
+      tags: runItem ? (runItem.tags || '') : '',
+      remainStr: this.fmtMMSS(runItemRemain),
+      cycleStr: '第 ' + (run.cycle + 1) + ' / ' + Math.max(1, runGroup.repeat) + ' 轮',
+      stepStr: '步骤 ' + (run.idx + 1) + ' / ' + runGroup.items.length,
+      progStr: runDoneSteps + ' / ' + runTotalSteps,
+      progPct: runTotalSteps ? Math.round(runDoneSteps / runTotalSteps * 100) + '%' : '0%',
+      ringStyle: { width: '120px', height: '120px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'conic-gradient(' + AC + ' ' + (runItemFrac * 100) + '%, var(--ring-track) 0)' },
+      paused: run.paused,
+      pauseLabel: run.paused ? '继续' : '暂停',
+      onNext: () => this.groupAdvance(),
+      onPause: () => this.groupPause(),
+      onStop: () => this.groupStop()
+    } : null;
+
+    // ===== 习惯 连续性 =====
+    const habitDays = 28;
+    const habitCells = (h) => {
+      const set = new Set(h.history);
+      const cells = [];
+      const today = new Date(this.todayIso() + 'T00:00:00');
+      for (let i = habitDays - 1; i >= 0; i--) {
+        const d = new Date(today.getTime() - i * 86400000);
+        const iso = d.toISOString().slice(0, 10);
+        const done = set.has(iso);
+        cells.push({ style: { width: '15px', height: '15px', borderRadius: '3px', background: done ? AC : 'var(--pomo-track)', border: i === 0 ? '1.5px solid var(--ink)' : 'none', boxSizing: 'border-box' } });
+      }
+      return cells;
+    };
+    const habitRows = s.habits.map(h => {
+      const doneToday = h.history.indexOf(this.todayIso()) >= 0;
+      const st = this.habitStreak(h);
+      return {
+        id: h.id, title: h.title, tags: h.tags || '',
+        streakStr: '#' + st, bestStr: '历史 #' + h.best,
+        rate30: Math.round(h.history.filter(d => d >= '2026-05-13').length / 30 * 100) + '%',
+        cells: habitCells(h),
+        doneToday,
+        checkLabel: doneToday ? '✓ 今日已打卡' : '打卡',
+        checkStyle: { padding: '8px 16px', borderRadius: '9px', fontSize: '13.5px', fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', border: 'none', background: doneToday ? 'var(--ok)' : 'var(--ink)', color: 'var(--card)' },
+        onToggle: () => this.habitToggle(h.id),
+        onDelete: () => this.habitDelete(h.id)
+      };
+    });
+
+    // ===== 国策树 =====
+    const ruleArr = s.rules;
+    const ruleRows = ruleArr.map((r, idx) => {
+      const next = ruleArr[idx + 1];
+      const hasKids = next && next.level > r.level;
+      const sel = r.id === s.selRule;
+      return {
+        id: r.id, title: r.title, note: r.note || '',
+        stars: '◆'.repeat(1) + (r.level > 1 ? '' : ''),
+        bullet: r.level === 1 ? '◆' : '◇',
+        bulletStyle: { color: r.level === 1 ? AC : 'var(--hm2)', fontSize: '12px', flexShrink: 0 },
+        streakStr: '坚守 #' + r.streak,
+        noteShow: !!r.note,
+        rowStyle: { display: 'flex', alignItems: 'center', gap: '9px', padding: '10px 13px', paddingLeft: (13 + (r.level - 1) * 26) + 'px', borderRadius: '9px', cursor: 'pointer', background: sel ? 'var(--ac-bg)' : 'transparent', border: sel ? '1px solid var(--ac-line)' : '1px solid transparent' },
+        noteStyle: { fontSize: '12px', color: 'var(--faint)', paddingLeft: (13 + 9 + 14 + (r.level - 1) * 26) + 'px', marginTop: '-3px' },
+        selected: sel,
+        onSelect: () => set({ selRule: sel ? null : r.id }),
+        onTitle: e => this.rulePatch(r.id, { title: e.target.value }),
+        onNote: e => this.rulePatch(r.id, { note: e.target.value }),
+        onViolate: () => set({ ruleViolatePending: r.id }),
+        onAddChild: () => set({ ruleDraft: { title: '', note: '', parent: r.id } })
+      };
+    });
+    const ruleCanAdd = this.ruleCanAddToday();
+    const ruleParent = s.ruleDraft && s.ruleDraft.parent ? (ruleArr.find(r => r.id === s.ruleDraft.parent) || null) : null;
+    const ruleVioP = ruleArr.find(r => r.id === s.ruleViolatePending) || null;
+    let ruleVioCount = 0;
+    if (ruleVioP) { const i = ruleArr.findIndex(r => r.id === ruleVioP.id); ruleVioCount = this.ruleSubEnd(ruleArr, i) - i; }
+
+    // ===== 回收站 =====
+    const kindLabel = { task: '任务', project: '项目', rule: '国策', group: '任务组', habit: '习惯' };
+    const trashRows = s.trash.map(t => ({
+      id: t.id, title: t.title,
+      kind: kindLabel[t.kind] || t.kind,
+      when: t.deletedAt,
+      onRestore: () => this.trashRestore(t.id),
+      onPurge: () => this.trashPurge(t.id)
+    }));
+
+    // ===== 押注 + 宠物 =====
+    const betRows = s.bets.slice().reverse().map(b => ({
+      desc: b.desc, stakeStr: b.stake + ' 分',
+      open: b.status === 'open',
+      statusLabel: b.status === 'open' ? '进行中' : b.status === 'won' ? '✓ 赢' : '✕ 输',
+      statusStyle: { fontSize: '11.5px', fontFamily: "'IBM Plex Mono', monospace", padding: '1px 8px', borderRadius: '5px', flexShrink: 0, color: b.status === 'open' ? 'var(--warn)' : b.status === 'won' ? 'var(--ok)' : 'var(--dg)', background: b.status === 'open' ? 'var(--warn-bg)' : b.status === 'won' ? 'var(--ok-bg)' : 'var(--dg-bg)' },
+      onWin: () => this.betResolve(b.id, true),
+      onLose: () => this.betResolve(b.id, false)
+    }));
+    const openBets = s.bets.filter(b => b.status === 'open').length;
+    // pet mood from recent habit + chain consistency
+    const recentHabit = s.habits.reduce((a, h) => a + (h.history.indexOf(this.todayIso()) >= 0 ? 1 : 0), 0);
+    const habitTotal = Math.max(1, s.habits.length);
+    const moodScore = recentHabit / habitTotal;
+    const petMood = chain.streak >= 10 && moodScore >= 0.5 ? { face: '◕‿◕', label: '精神奕奕', color: 'var(--ok)' }
+      : chain.streak >= 5 || moodScore >= 0.4 ? { face: '·‿·', label: '状态平稳', color: 'var(--ac)' }
+      : { face: '·_·', label: '需要你的坚持', color: 'var(--warn)' };
+
+    const orgSource = this.buildOrg();
+
+
+    return {
+      // shell
+      navItems,
+      viewTitle: titles[s.view] || 'Control',
+      todayHuman: '2026年6月11日 · 周四',
+      todayOrgStamp: '<2026-06-11 Thu>',
+      vChain: s.view === 'chain', vAgenda: s.view === 'agenda', vProjects: s.view === 'projects',
+      vRoutines: s.view === 'routines', vStats: s.view === 'stats', vCases: s.view === 'cases',
+      vStorage: s.view === 'storage',
+      goAgenda: () => set({ view: 'agenda' }),
+
+      // header chips
+      auxChipShow: s.aux.active && s.view !== 'chain',
+      sessChipShow: sess.active && s.view !== 'chain',
+
+      // hero
+      heroName: chain.name,
+      heroStreakStr: '#' + chain.streak,
+      heroMeta: '创建于 [' + chain.created + '] · ' + (chain.elite ? '神圣座位：仅最佳状态' : '任意状态可执行'),
+      heroBestStr: '#' + chain.best,
+      heroDots: dots,
+      chainCards,
+      onManageChains: () => set({ modal: 'chains' }),
+      onCloseChains: () => set({ modal: null, chainEditMsg: '' }),
+      modalChains: s.modal === 'chains',
+      chainEditRows,
+      chainEditMsg: s.chainEditMsg || '',
+      onAddChain: addChain,
+      chainDelConfirm: !!delPendingChain,
+      chainDelName: delPendingChain ? delPendingChain.name : '',
+      chainDelStreak: delPendingChain ? ('当前连胜 #' + delPendingChain.streak + ' · 历史最长 #' + delPendingChain.best) : '',
+      onConfirmDelete: () => performDelete(s.chainDelPending),
+      onCancelDelete: () => set({ chainDelPending: null }),
+
+      // session
+      sessActive: !!sess.active,
+      sessIdle: !sess.active,
+      sessTaskTitle: sessTask ? sessTask.title : '（无任务）',
+      sessElapsedStr: this.fmtHMS(sessElapsed),
+      sessOrg,
+      pomoTimeStr: this.fmtMMSS(pomoLen - pomoElapsed),
+      pomoLabel: '第 ' + pomoIdx + ' 颗 · 25min',
+      pomoRingStyle,
+      nextNodeStr: '#' + (chain.streak + 1),
+      seatTasks,
+      seatEmpty: seatTasks.length === 0,
+      seatCapture: s.seatCapture || '',
+      onSeatCaptureChange: e => set({ seatCapture: e.target.value }),
+      onSeatCaptureKey: e => { if (e.key === 'Enter') doSeatCapture(); },
+      onSeatCaptureAdd: doSeatCapture,
+      seatStartLabel: seatSel ? '坐上神圣座位 · ' + (seatSel.title.length > 10 ? seatSel.title.slice(0, 10) + '…' : seatSel.title) : '坐上神圣座位',
+      seatStartStyle: {
+        padding: '10px 22px', borderRadius: '9px', fontSize: '14.5px', fontWeight: 700, fontFamily: 'inherit',
+        whiteSpace: 'nowrap', flexShrink: 0, border: 'none',
+        background: seatTasks.length ? 'var(--ink)' : 'var(--dash)',
+        color: 'var(--on-fill)', cursor: seatTasks.length ? 'pointer' : 'not-allowed'
+      },
+      onCompleteNode: completeNode,
+      onViolation: () => set({ modal: 'violation' }),
+      onStartNow: () => this.startSession(false),
+
+      // aux
+      auxActive: !!s.aux.active,
+      auxIdle: !s.aux.active,
+      auxStreakStr: '#' + s.aux.streak,
+      auxRemainingStr: this.fmtMMSS(auxRemain),
+      auxRingStyle: auxRing,
+      onSnap: () => set({ aux: Object.assign({}, s.aux, { active: true, endsAt: Date.now() + 900000 }) }),
+      onSit: () => this.startSession(true),
+
+      // mini + today
+      miniTasks,
+      railPowCells: s.log.map(v => ({
+        style: { width: '14px', height: '14px', borderRadius: '3px', background: ['var(--line2)', 'var(--hm1)', 'var(--hm2)', AC][v <= 10 ? 0 : v < 90 ? 1 : v < 180 ? 2 : 3] }
+      })),
+      todayHoursStr: (s.todayMins / 60).toFixed(1) + 'h',
+      todayNodesStr: String(s.todayNodes),
+
+      // agenda
+      agendaRows,
+      captureValue: s.captureValue,
+      onCaptureChange: e => set({ captureValue: e.target.value }),
+      onCaptureKey: e => { if (e.key === 'Enter') doCapture(); },
+      onCaptureAdd: doCapture,
+
+      // projects
+      projRows,
+      onProjAddTop: () => this.projAddTop(),
+      projDelConfirm: !!projDelP,
+      projDelName: projDelP ? projDelP.title : '',
+      onProjConfirmDelete: () => this.projDelete(s.projDelPending),
+      onProjCancelDelete: () => set({ projDelPending: null }),
+
+      // view flags (new)
+      vGroups: s.view === 'groups', vHabits: s.view === 'habits', vRules: s.view === 'rules', vTrash: s.view === 'trash',
+
+      // 任务组
+      groupCards,
+      groupRunActive: !!groupRunBar,
+      groupRunBar: groupRunBar || {},
+      onGroupAdd: () => this.groupAdd(),
+
+      // 习惯
+      habitRows,
+      habitDraft: s.habitDraft || '',
+      onHabitDraft: e => set({ habitDraft: e.target.value }),
+      onHabitAdd: () => { this.habitAdd(s.habitDraft); set({ habitDraft: '' }); },
+      onHabitKey: e => { if (e.key === 'Enter') { this.habitAdd(s.habitDraft); set({ habitDraft: '' }); } },
+
+      // 国策
+      ruleRows,
+      ruleCanAdd,
+      ruleCannotAdd: !ruleCanAdd,
+      ruleLockMsg: ruleCanAdd ? '' : '今日已新增过国策 —— RSIP 要求每天最多立一条新规则，明天再来。',
+      ruleDraftTitle: (s.ruleDraft && s.ruleDraft.title) || '',
+      ruleDraftNote: (s.ruleDraft && s.ruleDraft.note) || '',
+      ruleDraftParentName: ruleParent ? ('作为子规则挂在「' + ruleParent.title + '」下') : '作为顶层国策',
+      ruleHasParent: !!ruleParent,
+      onRuleDraftTitle: e => set({ ruleDraft: Object.assign({}, s.ruleDraft, { title: e.target.value }) }),
+      onRuleDraftNote: e => set({ ruleDraft: Object.assign({}, s.ruleDraft, { note: e.target.value }) }),
+      onRuleClearParent: () => set({ ruleDraft: Object.assign({}, s.ruleDraft, { parent: '' }) }),
+      onRuleAdd: () => { this.ruleAdd((s.ruleDraft || {}).title, (s.ruleDraft || {}).note, (s.ruleDraft || {}).parent); },
+      onRuleBumpAll: () => this.ruleBumpAll(),
+      ruleVioConfirm: !!ruleVioP,
+      ruleVioName: ruleVioP ? ruleVioP.title : '',
+      ruleVioCountStr: ruleVioCount > 1 ? ('该规则连同 ' + (ruleVioCount - 1) + ' 条子规则将一并作废并进入回收站') : '该规则将作废并进入回收站',
+      onRuleVioConfirm: () => this.ruleViolate(s.ruleViolatePending),
+      onRuleVioCancel: () => set({ ruleViolatePending: null }),
+
+      // 回收站
+      trashRows,
+      trashEmpty: s.trash.length === 0,
+      trashHasItems: s.trash.length > 0,
+      onTrashEmpty: () => this.trashEmpty(),
+
+      // 押注 + 宠物
+      betRows,
+      openBetsStr: openBets ? (openBets + ' 注进行中') : '无进行中押注',
+      pointsStr: String(s.points),
+      betDesc: (s.betDraft && s.betDraft.desc) || '',
+      betStake: (s.betDraft && s.betDraft.stake) || 20,
+      betErr: (s.betDraft && s.betDraft.err) || '',
+      betErrShow: !!(s.betDraft && s.betDraft.err),
+      onBetDesc: e => set({ betDraft: Object.assign({}, s.betDraft, { desc: e.target.value, err: '' }) }),
+      onBetStake: e => set({ betDraft: Object.assign({}, s.betDraft, { stake: Math.max(1, parseInt(e.target.value, 10) || 1), err: '' }) }),
+      onBetAdd: () => this.betAdd((s.betDraft || {}).desc, (s.betDraft || {}).stake),
+      petFace: petMood.face,
+      petLabel: petMood.label,
+      petName: s.pet ? s.pet.name : '阿控',
+      petColor: petMood.color,
+
+      // PWA: theme + notifications
+      themeIcon: s.theme === 'dark' ? '☀' : '☾',
+      themeLabel: s.theme === 'dark' ? '深色' : '浅色',
+      onToggleTheme: () => this.toggleTheme(),
+      sbCollapsedClass: s.navCollapsed ? 'is-collapsed' : '',
+      collapseIcon: s.navCollapsed ? '»' : '«  收起',
+      collapseTitle: s.navCollapsed ? '展开侧栏' : '收起侧栏',
+      onToggleCollapse: () => set({ navCollapsed: !s.navCollapsed }),
+      notifyEnabled: !!(s.notify && s.notify.enabled),
+      notifyDisabled: !(s.notify && s.notify.enabled),
+      notifyErr: (s.notify && s.notify.err) || '',
+      notifyErrShow: !!(s.notify && s.notify.err),
+      onEnableNotify: () => this.enableNotify(),
+      onDisableNotify: () => this.disableNotify(),
+      onTestNotify: () => this.testNotify(),
+
+      // stats
+      bars, powCells, tagBars,
+      weekHoursStr: (weekMins / 60).toFixed(1) + 'h',
+      totalNodesStr: String(s.totalNodes),
+      caseCountStr: String(s.cases.length),
+
+      // cases
+      caseRows,
+      casesEmpty: s.cases.length === 0,
+
+      // storage
+      s3Endpoint: s3cfg.endpoint || '', onS3Endpoint: mkS3('endpoint'),
+      s3Bucket: s3cfg.bucket || '', onS3Bucket: mkS3('bucket'),
+      s3Region: s3cfg.region || '', onS3Region: mkS3('region'),
+      s3Ak: s3cfg.ak || '', onS3Ak: mkS3('ak'),
+      s3Sk: s3cfg.sk || '', onS3Sk: mkS3('sk'),
+      s3Prefix: s3cfg.prefix || '', onS3Prefix: mkS3('prefix'),
+      onS3Test: () => this.s3Test(),
+      onS3Backup: () => this.s3Backup(),
+      onS3Restore: () => this.s3Restore(),
+      s3Msg: s.s3Msg || '',
+      lastBackupStr: s.lastBackup ? new Date(s.lastBackup).toLocaleString() : '从未',
+      corsOrigin: (window.location && window.location.origin && window.location.origin !== 'null') ? window.location.origin : 'https://你的应用域名',
+      fsSupported, fsUnsupported: !fsSupported,
+      fileNone: s.localFileState !== 'pending' && s.localFileState !== 'connected',
+      filePending: s.localFileState === 'pending',
+      fileConnected: s.localFileState === 'connected',
+      localFileName: s.localFileName || '',
+      localFileMsg: s.localFileMsg || '',
+      onConnectFile: () => this.connectLocalFile(),
+      onReconnectFile: () => this.reconnectLocalFile(),
+      onWriteFileNow: () => this.writeLocalFile(true),
+      onDisconnectFile: () => this.disconnectLocalFile(),
+      stateHref: 'data:application/json;charset=utf-8,' + encodeURIComponent(stateJson),
+      onImportState,
+
+      // modals
+      modalViolation: s.modal === 'violation',
+      modalAux: s.modal === 'aux',
+      judgeContext: chain.name + ' ' + '#' + chain.streak + ' · 节点 #' + (chain.streak + 1) + ' 执行中。',
+      violationText: s.violationText,
+      onViolationText: e => set({ violationText: e.target.value }),
+      onJudgeBreak: judgeBreak,
+      onJudgeAllow: judgeAllow,
+      onAuxBreak: auxBreak,
+      onAuxAllow: auxAllow,
+      onModalCancel: () => set({ modal: null, violationText: '' }),
+
+      // source
+      srcOpen: !!s.srcOpen,
+      onOpenSrc: () => set({ srcOpen: true }),
+      onCloseSrc: () => set({ srcOpen: false }),
+      orgSource,
+      orgHref: 'data:text/plain;charset=utf-8,' + encodeURIComponent(orgSource),
+      onImport,
+      importMsg: s.importMsg
+    };
+  }
+
+  orgDate() { return '2026-06-11 Thu'; }
+
+  toOrgDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso + 'T00:00:00');
+    if (isNaN(d.getTime())) return '<' + iso + '>';
+    const wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+    return '<' + iso + ' ' + wd + '>';
+  }
+
+  // ---------- "today" anchor (demo is pinned to 2026-06-11) ----------
+  todayIso() { return '2026-06-11'; }
+  nowStamp() {
+    const d = new Date();
+    const hh = String(d.getHours()).padStart(2, '0'), mm = String(d.getMinutes()).padStart(2, '0');
+    return '[' + this.todayIso() + ' Thu ' + hh + ':' + mm + ']';
+  }
+  stampPlus(mins) {
+    const base = new Date();
+    const t = new Date(base.getTime() - mins * 60000);
+    const hh = String(t.getHours()).padStart(2, '0'), mm = String(t.getMinutes()).padStart(2, '0');
+    return '[' + this.todayIso() + ' Thu ' + hh + ':' + mm + ']';
+  }
+
+  // ---------- habit (org :STYLE: habit) ----------
+  habitStreak(h) {
+    const set = new Set(h.history);
+    let streak = 0;
+    let d = new Date(this.todayIso() + 'T00:00:00');
+    // if today not done, start counting from yesterday
+    if (!set.has(this.todayIso())) d = new Date(d.getTime() - 86400000);
+    for (;;) {
+      const iso = d.toISOString().slice(0, 10);
+      if (set.has(iso)) { streak++; d = new Date(d.getTime() - 86400000); }
+      else break;
+    }
+    return streak;
+  }
+  habitToggle(id) {
+    const today = this.todayIso();
+    this.setState(s => ({
+      habits: s.habits.map(h => {
+        if (h.id !== id) return h;
+        const has = h.history.indexOf(today) >= 0;
+        const history = has ? h.history.filter(d => d !== today) : h.history.concat([today]);
+        const ns = this.habitStreak({ history });
+        return Object.assign({}, h, { history, best: Math.max(h.best, ns) });
+      })
+    }));
+  }
+  habitAdd(title) {
+    title = (title || '').trim(); if (!title) return;
+    const m = title.match(/^(.*?)\s*(:(?:[^:\s]+:)+)?$/);
+    this.setState(s => ({ habits: s.habits.concat([{ id: 'h' + Date.now(), title: (m && m[1] ? m[1] : title).trim(), tags: (m && m[2]) || '', repeater: '.+1d', history: [], best: 0 }]) }));
+  }
+  habitDelete(id) {
+    const h = this.state.habits.find(x => x.id === id); if (!h) return;
+    this.toTrash('habit', h.title, { habit: h });
+    this.setState(s => ({ habits: s.habits.filter(x => x.id !== id) }));
+  }
+
+  // ---------- 任务组 循环执行器 ----------
+  group(id) { return this.state.groups.find(g => g.id === id); }
+  groupStart(id) {
+    const g = this.group(id); if (!g || !g.items.length) return;
+    this.setState({ groupRun: { active: true, groupId: id, idx: 0, cycle: 0, itemStartedAt: Date.now(), paused: false, pausedAt: 0 }, view: 'groups' });
+  }
+  groupAdvance() {
+    const r = this.state.groupRun; if (!r.active) return;
+    const g = this.group(r.groupId); if (!g) { this.groupStop(); return; }
+    // log the finished item as a clock entry
+    const it = g.items[r.idx];
+    if (it) this.pushClock(it.title, it.mins);
+    let idx = r.idx + 1, cycle = r.cycle;
+    if (idx >= g.items.length) { idx = 0; cycle += 1; }
+    if (cycle >= Math.max(1, g.repeat)) {
+      // whole group done → +1 active chain node, award points
+      this.bumpActiveChain();
+      this.setState(s => ({ groupRun: { active: false, groupId: null, idx: 0, cycle: 0, itemStartedAt: 0, paused: false, pausedAt: 0 }, points: s.points + 5 }));
+      return;
+    }
+    this.setState({ groupRun: Object.assign({}, r, { idx, cycle, itemStartedAt: Date.now(), paused: false, pausedAt: 0 }) });
+  }
+  groupPause() {
+    const r = this.state.groupRun; if (!r.active) return;
+    if (r.paused) this.setState({ groupRun: Object.assign({}, r, { paused: false, itemStartedAt: Date.now() - (r.pausedAt - r.itemStartedAt), pausedAt: 0 }) });
+    else this.setState({ groupRun: Object.assign({}, r, { paused: true, pausedAt: Date.now() }) });
+  }
+  groupStop() { this.setState({ groupRun: { active: false, groupId: null, idx: 0, cycle: 0, itemStartedAt: 0, paused: false, pausedAt: 0 } }); }
+  groupAddItem(gid) {
+    this.setState(s => ({ groups: s.groups.map(g => g.id === gid ? Object.assign({}, g, { items: g.items.concat([{ id: 'gi' + Date.now(), title: '新步骤', mins: 10, tags: '' }]) }) : g) }));
+  }
+  groupPatchItem(gid, iid, patch) {
+    this.setState(s => ({ groups: s.groups.map(g => g.id === gid ? Object.assign({}, g, { items: g.items.map(it => it.id === iid ? Object.assign({}, it, patch) : it) }) : g) }));
+  }
+  groupDelItem(gid, iid) {
+    this.setState(s => ({ groups: s.groups.map(g => g.id === gid ? Object.assign({}, g, { items: g.items.filter(it => it.id !== iid) }) : g) }));
+  }
+  groupPatch(gid, patch) { this.setState(s => ({ groups: s.groups.map(g => g.id === gid ? Object.assign({}, g, patch) : g) })); }
+  groupAdd() {
+    const id = 'g' + Date.now();
+    this.setState(s => ({ groups: s.groups.concat([{ id, title: '新任务组', repeat: 1, items: [{ id: 'gi' + Date.now(), title: '步骤一', mins: 15, tags: '' }] }]) }));
+  }
+  groupDelete(gid) {
+    const g = this.group(gid); if (!g) return;
+    this.toTrash('group', g.title, { group: g });
+    this.setState(s => ({ groups: s.groups.filter(x => x.id !== gid), groupRun: s.groupRun.groupId === gid ? { active: false, groupId: null, idx: 0, cycle: 0, itemStartedAt: 0, paused: false, pausedAt: 0 } : s.groupRun }));
+  }
+
+  pushClock(title, mins) {
+    const chain = this.activeChain();
+    this.setState(s => ({
+      clockLog: s.clockLog.concat([{ title, chain: chain.name, node: chain.streak + 1, start: this.stampPlus(mins), end: this.nowStamp(), mins }]),
+      todayMins: s.todayMins + mins
+    }));
+  }
+  bumpActiveChain() {
+    this.setState(s => ({
+      chains: s.chains.map(c => c.id === s.activeChainId ? Object.assign({}, c, { streak: c.streak + 1, best: Math.max(c.best, c.streak + 1) }) : c),
+      todayNodes: s.todayNodes + 1, totalNodes: s.totalNodes + 1
+    }));
+  }
+
+  // ---------- 国策树（RSIP）----------
+  ruleSubEnd(arr, i) { const lvl = arr[i].level; let j = i + 1; while (j < arr.length && arr[j].level > lvl) j++; return j; }
+  rulePatch(id, patch) { this.setState(s => ({ rules: s.rules.map(r => r.id === id ? Object.assign({}, r, patch) : r) })); }
+  ruleCanAddToday() { return this.state.lastRuleAddDate !== this.todayIso(); }
+  ruleAdd(title, note, parentId) {
+    title = (title || '').trim(); if (!title) return false;
+    if (!this.ruleCanAddToday()) return false;
+    const arr = this.state.rules.slice();
+    if (parentId) {
+      const idx = arr.findIndex(r => r.id === parentId);
+      if (idx >= 0) {
+        const end = this.ruleSubEnd(arr, idx);
+        arr.splice(end, 0, { id: 'k' + Date.now(), level: arr[idx].level + 1, title, note: note || '', streak: 0, created: this.todayIso() });
+      }
+    } else {
+      arr.push({ id: 'k' + Date.now(), level: 1, title, note: note || '', streak: 0, created: this.todayIso() });
+    }
+    this.setState({ rules: arr, lastRuleAddDate: this.todayIso(), ruleDraft: { title: '', note: '', parent: '' } });
+    return true;
+  }
+  ruleBumpAll() {
+    // 全部坚守 +1（每日结算）
+    this.setState(s => ({ rules: s.rules.map(r => Object.assign({}, r, { streak: r.streak + 1 })) }));
+  }
+  ruleViolate(id) {
+    // 违规 → 该节点连同所有子节点级联删除（进回收站），祖先链清零
+    const arr = this.state.rules.slice();
+    const idx = arr.findIndex(r => r.id === id); if (idx < 0) return;
+    const end = this.ruleSubEnd(arr, idx);
+    const removed = arr.slice(idx, end);
+    const trashAdds = removed.map(r => ({ id: 'tr' + Date.now() + Math.random().toString(36).slice(2, 6), kind: 'rule', title: r.title, deletedAt: this.todayIso() + ' Thu', payload: { rule: r } }));
+    arr.splice(idx, end - idx);
+    this.setState(s => ({ rules: arr, trash: trashAdds.concat(s.trash), ruleViolatePending: null, selRule: null }));
+  }
+
+  // ---------- 回收站 ----------
+  toTrash(kind, title, payload) {
+    this.setState(s => ({ trash: [{ id: 'tr' + Date.now() + Math.random().toString(36).slice(2, 6), kind, title, deletedAt: this.todayIso() + ' Thu', payload }].concat(s.trash) }));
+  }
+  trashPurge(id) { this.setState(s => ({ trash: s.trash.filter(t => t.id !== id) })); }
+  trashEmpty() { this.setState({ trash: [] }); }
+  trashRestore(id) {
+    const t = this.state.trash.find(x => x.id === id); if (!t) return;
+    const p = t.payload || {};
+    this.setState(s => {
+      const patch = { trash: s.trash.filter(x => x.id !== id) };
+      if (t.kind === 'task' && p.task) patch.tasks = s.tasks.concat([p.task]);
+      else if (t.kind === 'habit' && p.habit) patch.habits = s.habits.concat([p.habit]);
+      else if (t.kind === 'group' && p.group) patch.groups = s.groups.concat([p.group]);
+      else if (t.kind === 'rule' && p.rule) patch.rules = s.rules.concat([Object.assign({}, p.rule, { level: 1 })]);
+      else if (t.kind === 'project' && p.nodes) patch.projects = s.projects.concat(p.nodes);
+      return patch;
+    });
+  }
+
+  // ---------- 押注 ----------
+  betAdd(desc, stake) {
+    desc = (desc || '').trim(); stake = Math.max(1, parseInt(stake, 10) || 0);
+    if (!desc) return;
+    if (stake > this.state.points) { this.setState({ betDraft: Object.assign({}, this.state.betDraft, { err: '积分不足' }) }); return; }
+    this.setState(s => ({ bets: s.bets.concat([{ id: 'bet' + Date.now(), desc, stake, status: 'open', date: this.todayIso() }]), betDraft: { desc: '', stake: 20 } }));
+  }
+  betResolve(id, won) {
+    this.setState(s => {
+      const b = s.bets.find(x => x.id === id); if (!b || b.status !== 'open') return {};
+      return {
+        bets: s.bets.map(x => x.id === id ? Object.assign({}, x, { status: won ? 'won' : 'lost' }) : x),
+        points: s.points + (won ? b.stake : -b.stake)
+      };
+    });
+  }
+
+  // ---------- project outline (org) operations ----------
+  newNode(level) {
+    return { id: 'pj' + Date.now() + Math.floor(Math.random() * 1000), level, kw: 'TODO', prio: '', title: '新条目', tags: '', sched: '', dl: '', cookie: false, note: '' };
+  }
+  subEnd(arr, i) { const lvl = arr[i].level; let j = i + 1; while (j < arr.length && arr[j].level > lvl) j++; return j; }
+  projPatch(id, patch) { this.setState(s => ({ projects: s.projects.map(p => p.id === id ? Object.assign({}, p, patch) : p) })); }
+  projCycleKw(id) {
+    const order = ['', 'TODO', 'NEXT', 'WAITING', 'DONE', 'CANCELLED'];
+    const p = this.state.projects.find(x => x.id === id); if (!p) return;
+    this.projPatch(id, { kw: order[(order.indexOf(p.kw || '') + 1) % order.length] });
+  }
+  projCyclePrio(id) {
+    const order = ['', 'A', 'B', 'C'];
+    const p = this.state.projects.find(x => x.id === id); if (!p) return;
+    this.projPatch(id, { prio: order[(order.indexOf(p.prio || '') + 1) % order.length] });
+  }
+  projMoveUp(id) {
+    const arr = this.state.projects.slice(); const idx = arr.findIndex(p => p.id === id); if (idx < 0) return;
+    const lvl = arr[idx].level; let k = idx - 1;
+    while (k >= 0 && arr[k].level > lvl) k--;
+    if (k < 0 || arr[k].level < lvl) return; // no previous sibling
+    const end = this.subEnd(arr, idx);
+    const block = arr.slice(idx, end);
+    arr.splice(idx, end - idx);
+    arr.splice(k, 0, ...block);
+    this.setState({ projects: arr });
+  }
+  projMoveDown(id) {
+    const arr = this.state.projects.slice(); const idx = arr.findIndex(p => p.id === id); if (idx < 0) return;
+    const lvl = arr[idx].level; const end = this.subEnd(arr, idx);
+    if (end >= arr.length || arr[end].level !== lvl) return; // no next sibling
+    const nextEnd = this.subEnd(arr, end);
+    const block = arr.slice(idx, end);
+    const sib = arr.slice(end, nextEnd);
+    arr.splice(idx, nextEnd - idx, ...sib, ...block);
+    this.setState({ projects: arr });
+  }
+  projIndent(id) {
+    const arr = this.state.projects.slice(); const idx = arr.findIndex(p => p.id === id); if (idx <= 0) return;
+    if (arr[idx - 1].level < arr[idx].level) return; // nothing to nest under
+    const end = this.subEnd(arr, idx);
+    for (let j = idx; j < end; j++) arr[j] = Object.assign({}, arr[j], { level: arr[j].level + 1 });
+    this.setState({ projects: arr });
+  }
+  projOutdent(id) {
+    const arr = this.state.projects.slice(); const idx = arr.findIndex(p => p.id === id); if (idx < 0) return;
+    if (arr[idx].level <= 1) return;
+    const end = this.subEnd(arr, idx);
+    for (let j = idx; j < end; j++) arr[j] = Object.assign({}, arr[j], { level: arr[j].level - 1 });
+    this.setState({ projects: arr });
+  }
+  projAddChild(id) {
+    const arr = this.state.projects.slice(); const idx = arr.findIndex(p => p.id === id); if (idx < 0) return;
+    const node = this.newNode(arr[idx].level + 1);
+    arr.splice(idx + 1, 0, node);
+    const collapsed = (this.state.collapsed || []).filter(x => x !== id);
+    this.setState({ projects: arr, collapsed, selProj: node.id });
+  }
+  projAddSibling(id) {
+    const arr = this.state.projects.slice(); const idx = arr.findIndex(p => p.id === id); if (idx < 0) return;
+    const end = this.subEnd(arr, idx);
+    const node = this.newNode(arr[idx].level);
+    arr.splice(end, 0, node);
+    this.setState({ projects: arr, selProj: node.id });
+  }
+  projAddTop() {
+    const arr = this.state.projects.slice();
+    const node = this.newNode(1);
+    arr.push(node);
+    this.setState({ projects: arr, selProj: node.id, view: 'projects' });
+  }
+  projDelete(id) {
+    const arr = this.state.projects.slice(); const idx = arr.findIndex(p => p.id === id); if (idx < 0) return;
+    const end = this.subEnd(arr, idx);
+    const removed = arr.slice(idx, end);
+    this.toTrash('project', removed[0].title, { nodes: removed });
+    arr.splice(idx, end - idx);
+    this.setState({ projects: arr, selProj: null, projDelPending: null });
+  }
+  projRequestDelete(id) {
+    const arr = this.state.projects; const idx = arr.findIndex(p => p.id === id); if (idx < 0) return;
+    const hasKids = this.subEnd(arr, idx) > idx + 1;
+    if (hasKids) this.setState({ projDelPending: id });
+    else this.projDelete(id);
+  }
+
+  // ---------- storage: local .org file (File System Access API) ----------
+  idb() {
+    return new Promise((res, rej) => {
+      const req = indexedDB.open('control-fs', 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore('handles'); };
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+  }
+  async saveHandle(h) {
+    try { const db = await this.idb(); db.transaction('handles', 'readwrite').objectStore('handles').put(h, 'org'); } catch (e) { /* ignore */ }
+  }
+  async clearHandle() {
+    try { const db = await this.idb(); db.transaction('handles', 'readwrite').objectStore('handles').delete('org'); } catch (e) { /* ignore */ }
+  }
+  async initLocalFile() {
+    if (typeof window.showSaveFilePicker !== 'function') return;
+    try {
+      const db = await this.idb();
+      const req = db.transaction('handles').objectStore('handles').get('org');
+      req.onsuccess = async () => {
+        const h = req.result;
+        if (!h) return;
+        this._fileHandle = h;
+        let perm = 'prompt';
+        try { perm = await h.queryPermission({ mode: 'readwrite' }); } catch (e) { /* ignore */ }
+        this.setState({ localFileName: h.name, localFileState: perm === 'granted' ? 'connected' : 'pending' });
+      };
+    } catch (e) { /* ignore */ }
+  }
+  async connectLocalFile() {
+    try {
+      const h = await window.showSaveFilePicker({ suggestedName: 'control.org', types: [{ description: 'Org file', accept: { 'text/plain': ['.org'] } }] });
+      this._fileHandle = h;
+      await this.saveHandle(h);
+      this.setState({ localFileState: 'connected', localFileName: h.name, localFileMsg: '' });
+      this.writeLocalFile(true);
+    } catch (e) {
+      if (e && e.name !== 'AbortError') this.setState({ localFileMsg: '✕ 连接失败：' + e.message });
+    }
+  }
+  async reconnectLocalFile() {
+    const h = this._fileHandle;
+    if (!h) return;
+    try {
+      const p = await h.requestPermission({ mode: 'readwrite' });
+      if (p === 'granted') { this.setState({ localFileState: 'connected' }); this.writeLocalFile(true); }
+      else this.setState({ localFileMsg: '✕ 未获得写入权限' });
+    } catch (e) { this.setState({ localFileMsg: '✕ 授权失败：' + e.message }); }
+  }
+  disconnectLocalFile() {
+    this._fileHandle = null;
+    this.clearHandle();
+    this.setState({ localFileState: 'none', localFileName: '', localFileMsg: '' });
+  }
+  async writeLocalFile(manual) {
+    const h = this._fileHandle;
+    if (!h) return;
+    try {
+      const w = await h.createWritable();
+      await w.write(this.buildOrg());
+      await w.close();
+      this.setState({ localFileMsg: '✓ 已写入 ' + h.name + ' · ' + new Date().toLocaleTimeString() });
+    } catch (e) {
+      this.setState({ localFileMsg: '✕ 写入失败：' + e.message });
+    }
+  }
+
+  // ---------- storage: S3-compatible remote (SigV4 in browser) ----------
+  s3Ready() {
+    const c = this.state.s3 || {};
+    return !!(c.endpoint && c.bucket && c.ak && c.sk);
+  }
+  s3Key(name) {
+    let p = ((this.state.s3 || {}).prefix || '').replace(/^\/+/, '');
+    if (p && !p.endsWith('/')) p += '/';
+    return p + name;
+  }
+  s3Snapshot() {
+    const c = Object.assign({}, this.state);
+    delete c.now; delete c.modal; delete c.srcOpen;
+    delete c.s3; delete c.s3Msg;
+    delete c.localFileName; delete c.localFileState; delete c.localFileMsg;
+    delete c.importMsg; delete c.captureValue; delete c.violationText;
+    return c;
+  }
+  async sha256Hex(msg) {
+    const data = typeof msg === 'string' ? new TextEncoder().encode(msg) : msg;
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  async hmacRaw(key, msg) {
+    const k = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    return new Uint8Array(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(msg)));
+  }
+  async s3Fetch(method, key, body) {
+    const cfg = this.state.s3;
+    let endpoint = cfg.endpoint.trim().replace(/\/+$/, '');
+    if (!/^https?:\/\//.test(endpoint)) endpoint = 'https://' + endpoint;
+    const host = new URL(endpoint).host;
+    const canonicalUri = '/' + encodeURIComponent(cfg.bucket.trim()) + '/' + key.split('/').map(encodeURIComponent).join('/');
+    const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
+    const dateStamp = amzDate.slice(0, 8);
+    const payload = body || '';
+    const payloadHash = await this.sha256Hex(payload);
+    const region = ((cfg.region || '').trim()) || 'auto';
+    const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
+    const canonicalHeaders = 'host:' + host + '\nx-amz-content-sha256:' + payloadHash + '\nx-amz-date:' + amzDate + '\n';
+    const canonicalRequest = [method, canonicalUri, '', canonicalHeaders, signedHeaders, payloadHash].join('\n');
+    const scope = dateStamp + '/' + region + '/s3/aws4_request';
+    const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, await this.sha256Hex(canonicalRequest)].join('\n');
+    let k = new TextEncoder().encode('AWS4' + cfg.sk);
+    for (const part of [dateStamp, region, 's3', 'aws4_request']) k = await this.hmacRaw(k, part);
+    const sig = Array.from(await this.hmacRaw(k, stringToSign)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const auth = 'AWS4-HMAC-SHA256 Credential=' + cfg.ak.trim() + '/' + scope + ', SignedHeaders=' + signedHeaders + ', Signature=' + sig;
+    return fetch(endpoint + canonicalUri, {
+      method,
+      headers: { 'x-amz-content-sha256': payloadHash, 'x-amz-date': amzDate, 'Authorization': auth },
+      body: method === 'PUT' ? payload : undefined
+    });
+  }
+  async s3Test() {
+    if (!this.s3Ready()) { this.setState({ s3Msg: '请先填写 Endpoint / Bucket / Access Key / Secret Key' }); return; }
+    this.setState({ s3Msg: '测试中…' });
+    try {
+      const r = await this.s3Fetch('GET', this.s3Key('control.state.json'));
+      if (r.ok) this.setState({ s3Msg: '✓ 连接成功，远端已有备份' });
+      else if (r.status === 404) this.setState({ s3Msg: '✓ 连接成功（远端暂无备份，可「立即备份」）' });
+      else this.setState({ s3Msg: '✕ HTTP ' + r.status + (r.status === 403 ? '（多为 AK/SK 或 Region 配置问题，R2 的 Region 应为 auto）' : '') });
+    } catch (e) {
+      this.setState({ s3Msg: '✕ 请求失败：' + e.message + '。若为 CORS 错误，请按下方说明配置桶的 CORS 规则。' });
+    }
+  }
+  async s3Backup() {
+    if (!this.s3Ready()) { this.setState({ s3Msg: '请先填写 Endpoint / Bucket / Access Key / Secret Key' }); return; }
+    this.setState({ s3Msg: '备份中…' });
+    try {
+      const r1 = await this.s3Fetch('PUT', this.s3Key('control.org'), this.buildOrg());
+      const r2 = await this.s3Fetch('PUT', this.s3Key('control.state.json'), JSON.stringify(this.s3Snapshot()));
+      if (r1.ok && r2.ok) this.setState({ s3Msg: '✓ 备份成功（control.org + control.state.json）', lastBackup: new Date().toISOString() });
+      else this.setState({ s3Msg: '✕ 备份失败：HTTP ' + (r1.ok ? r2.status : r1.status) });
+    } catch (e) {
+      this.setState({ s3Msg: '✕ 备份失败：' + e.message + '。若为 CORS 错误，请按下方说明配置桶的 CORS 规则。' });
+    }
+  }
+  async s3Restore() {
+    if (!this.s3Ready()) { this.setState({ s3Msg: '请先填写 Endpoint / Bucket / Access Key / Secret Key' }); return; }
+    if (!window.confirm('将用远端备份覆盖当前本地数据，确定继续？')) return;
+    this.setState({ s3Msg: '恢复中…' });
+    try {
+      const r = await this.s3Fetch('GET', this.s3Key('control.state.json'));
+      if (!r.ok) { this.setState({ s3Msg: r.status === 404 ? '✕ 远端没有找到备份' : '✕ HTTP ' + r.status }); return; }
+      const data = JSON.parse(await r.text());
+      this.setState(Object.assign({}, this.defaults(), data, {
+        s3: this.state.s3, now: Date.now(), view: 'storage',
+        lastBackup: this.state.lastBackup, s3Msg: '✓ 已从远端恢复',
+        localFileName: this.state.localFileName, localFileState: this.state.localFileState, localFileMsg: this.state.localFileMsg
+      }));
+    } catch (e) {
+      this.setState({ s3Msg: '✕ 恢复失败：' + e.message });
+    }
+  }
+}
+</script>
+</body>
+</html>
