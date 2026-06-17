@@ -1,6 +1,8 @@
 # Control
 
-自制力工程工具 —— 基于 CTDP（神圣座位 / 下必为例 / 线性时延）与 RSIP 思想的任务与项目管理 Web App，所有记录都以 [Org mode](https://orgmode.org/) 语法为底层引擎。
+自制力工程工具 —— 基于[知乎：如何提高自制力？](https://www.zhihu.com/question/19888447/answer/1930799480401293785) 内的思想：CTDP（神圣座位 / 下必为例 / 线性时延）与 RSIP 思想的任务与项目管理 Web App，所有记录都以 [Org mode](https://orgmode.org/) 语法为底层引擎，支持s3备份同步。
+
+欢迎访问测试：[control.ryc111.com](https://control.ryc111.com)（纯静态html，支持PWA安装，数据完全离线）
 
 ## 功能
 
@@ -46,3 +48,7 @@ python3 -m http.server
 - `support.js` —— 运行时（请与 `index.html` 一同部署）
 - `manifest.webmanifest` · `sw.js` · `icons/` —— PWA 资产
 
+# Credit
+
+- 整个 App 的思想体系基于[知乎：如何提高自制力？](https://www.zhihu.com/question/19888447/answer/1930799480401293785)（CTDP / RSIP）。
+- 虚拟宠物功能参考了 [KenXiao1/momentum](https://github.com/KenXiao1/momentum)。
