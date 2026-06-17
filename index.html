@@ -83,9 +83,14 @@
         gap: 5px !important;
       }
       .sb-nav > div { white-space: nowrap; flex-shrink: 0; padding: 7px 11px !important; }
+      .sb-nav .nav-icon { display: inline-flex !important; align-items: center; justify-content: center; font-family: 'Noto Sans SC', system-ui, sans-serif; font-size: 16px; line-height: 1; }
+      .sb-nav .nav-label { display: none !important; }
+      .sb-nav .nav-badge { display: none !important; }
       .sb-foot { margin-top: 0 !important; flex-direction: row !important; flex-shrink: 0; gap: 6px !important; align-items: center; }
       .sb-foot > div { flex-direction: row !important; }
       .sb-stamp { display: none !important; }
+      .sb-collapse-btn { display: none !important; }
+      .sb-brand-mark { display: none !important; }
       .app-main-inner { padding: 16px 14px 28px !important; }
       /* collapse every inline multi-column grid into a single column */
       [data-screen-label][style*="grid-template-columns"],
@@ -147,7 +152,7 @@
         </button>
         <button onClick="{{ onToggleTheme }}" title="切换深浅色" style="width: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 9px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 15px; color: var(--ink);" style-hover="border-color: var(--faint2);">{{ themeIcon }}</button>
       </div>
-      <button onClick="{{ onToggleCollapse }}" title="{{ collapseTitle }}" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px; background: transparent; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 12px; color: var(--mut); font-family: inherit;" style-hover="border-color: var(--faint2); color: var(--ink2);">{{ collapseIcon }}</button>
+      <button onClick="{{ onToggleCollapse }}" title="{{ collapseTitle }}" class="sb-collapse-btn" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 7px; background: transparent; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 12px; color: var(--mut); font-family: inherit;" style-hover="border-color: var(--faint2); color: var(--ink2);">{{ collapseIcon }}</button>
       <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--faint); padding: 0 4px;" class="sb-stamp">{{ todayOrgStamp }}</div>
     </div>
   </div>
@@ -1219,7 +1224,7 @@ class Component extends DCLogic {
       const raw = localStorage.getItem('control-app-v1');
       if (raw) {
         const saved = JSON.parse(raw);
-        const st = Object.assign({}, this.defaults(), saved, { now: Date.now(), modal: saved.modal === 'aux' ? 'aux' : null, importMsg: '', s3Msg: '', localFileMsg: '', localFileState: 'none' });
+        const st = Object.assign({}, this.defaults(), saved, { now: Date.now(), view: 'chain', modal: saved.modal === 'aux' ? 'aux' : null, importMsg: '', s3Msg: '', localFileMsg: '', localFileState: 'none' });
         // migrate legacy 定式(routines) → 国策树(rules) if user had old data without rules
         if (saved.routines && !saved.rules) {
           st.rules = saved.routines.map((r, i) => ({ id: 'k' + i, level: 1, title: r.action, note: '回溯点：' + (r.node || '—') + '（原稳态：' + (r.stale || '—') + '）', streak: r.streak || 0, created: '2026-06-01' }));
