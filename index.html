@@ -251,7 +251,7 @@
                 <div style="display: flex; gap: 10px; margin-top: 16px;">
                   <button onClick="{{ onCompleteNode }}" style="padding: 10px 22px; background: var(--ac); color: #fff; border: none; border-radius: 9px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;" style-hover="background: var(--ac-d);">完成节点 {{ nextNodeStr }} ✓</button>
                   <button onClick="{{ onViolation }}" style="padding: 10px 18px; background: var(--card); color: var(--dg); border: 1.5px solid var(--dg); border-radius: 9px; font-size: 14px; cursor: pointer; font-family: inherit;" style-hover="background: var(--dg-bg);">报告疑似违规…</button>
-                  <div style="margin-left: auto; align-self: center; font-size: 12px; color: var(--faint);">中断或走神？诚实判定 →</div>
+                  <div style="margin-left: auto; align-self: center; font-size: 12px; color: var(--faint);">走神 / 中断他事超过 2 分钟即判违规 →</div>
                 </div>
               </div>
             </sc-if>
@@ -262,6 +262,18 @@
                   <div style="font-size: 15px; font-weight: 700; color: var(--ink2);">神圣座位空着</div>
                   <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--ac); background: var(--ac-bg); border-radius: 5px; padding: 2px 8px; white-space: nowrap;">下一节点 {{ nextNodeStr }}</span>
                   <div style="margin-left: auto; font-size: 12px; color: var(--faint); white-space: nowrap;">选一条任务坐上座位</div>
+                </div>
+
+                <!-- 准备道具：神圣座位标志 + 启动信号（线性时延 · 可自定义） -->
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; background: var(--sub); border: 1px solid var(--line2); border-radius: 9px; padding: 8px 10px;">
+                  <div style="flex: 1; min-width: 150px; display: flex; align-items: center; gap: 7px;">
+                    <span style="font-size: 11px; color: var(--faint); white-space: nowrap; flex-shrink: 0;">神圣座位</span>
+                    <input value="{{ seatMarker }}" onChange="{{ onSeatMarker }}" placeholder="定义你的触发标志" style="flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; font-family: inherit; outline: none; background: var(--card); color: var(--ink);" style-focus="border-color: var(--ac);">
+                  </div>
+                  <div style="flex: 1; min-width: 150px; display: flex; align-items: center; gap: 7px;">
+                    <span style="font-size: 11px; color: var(--faint); white-space: nowrap; flex-shrink: 0;">启动信号</span>
+                    <input value="{{ auxSignal }}" onChange="{{ onAuxSignal }}" placeholder="定义你的预约信号" style="flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; font-family: inherit; outline: none; background: var(--card); color: var(--ink);" style-focus="border-color: var(--ac);">
+                  </div>
                 </div>
 
                 <!-- task picker -->
@@ -779,7 +791,7 @@
 
       <!-- ============ view: 存储与备份 ============ -->
       <sc-if value="{{ vStorage }}" hint-placeholder-val="{{ false }}">
-        <div data-screen-label="存储与备份" style="max-width: 760px; display: flex; flex-direction: column; gap: 14px;">
+        <div data-screen-label="设置" style="max-width: 760px; display: flex; flex-direction: column; gap: 14px;">
 
           <!-- 设置：主题 + 提醒 -->
           <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px;">
@@ -810,6 +822,30 @@
               <sc-if value="{{ notifyErrShow }}" hint-placeholder-val="{{ false }}">
                 <div style="flex-basis: 100%; font-size: 12px; color: var(--dg);">{{ notifyErr }}</div>
               </sc-if>
+            </div>
+            <div style="border-top: 1px solid var(--line2); padding-top: 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <div style="display: flex; flex-direction: column; gap: 2px; max-width: 440px;">
+                <div style="font-size: 13.5px; font-weight: 700;">新手引导</div>
+                <div style="font-size: 12px; color: var(--mut); line-height: 1.6;">重新打开欢迎引导，回顾任务链 / 神圣座位 / 下必为例 / 国策四个核心机制。</div>
+              </div>
+              <button onClick="{{ onOpenGuide }}" style="margin-left: auto; flex-shrink: 0; padding: 9px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--faint2);">重看引导</button>
+            </div>
+            <div style="border-top: 1px solid var(--line2); padding-top: 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <div style="display: flex; flex-direction: column; gap: 2px; max-width: 440px;">
+                <div style="font-size: 13.5px; font-weight: 700; color: var(--dg);">初始化应用</div>
+                <div style="font-size: 12px; color: var(--mut); line-height: 1.6;">清空内置的演示内容（任务链 / 任务 / 项目 / 习惯 / 国策 / 判例 / 记录等），从一条空白主链重新开始。仅保留主题、信号与备份配置。此操作不可撤销。</div>
+              </div>
+              <div style="margin-left: auto; flex-shrink: 0;">
+                <sc-if value="{{ initPending }}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; gap: 8px;">
+                    <button onClick="{{ onInitConfirm }}" style="padding: 9px 16px; background: var(--dg); color: #fff; border: none; border-radius: 9px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap;">确认清空</button>
+                    <button onClick="{{ onInitCancel }}" style="padding: 9px 14px; background: var(--card); color: var(--mut); border: 1px solid var(--line); border-radius: 9px; font-size: 13px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--faint2);">取消</button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ initIdle }}" hint-placeholder-val="{{ true }}">
+                  <button onClick="{{ onInitStart }}" style="padding: 9px 16px; background: var(--card); color: var(--dg); border: 1px solid var(--dg-line); border-radius: 9px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="background: var(--dg-bg);">初始化…</button>
+                </sc-if>
+              </div>
             </div>
           </div>
 
@@ -952,12 +988,55 @@
     </div>
   </sc-if>
 
-  <!-- ================= 判定弹窗：主链 ================= -->
+  <!-- ================= 新手引导：欢迎 ================= -->
+  <sc-if value="{{ showWelcome }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="新手引导" style="position: fixed; inset: 0; z-index: 70; background: rgba(34,31,27,.46); display: flex; align-items: center; justify-content: center; padding: 20px; overflow: auto;">
+      <div style="width: 560px; max-width: 100%; background: var(--card); border-radius: 18px; padding: 28px 30px; box-shadow: 0 24px 64px rgba(34,31,27,.28); margin: auto;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 40px; height: 40px; border-radius: 10px; background: var(--fill); color: var(--on-fill); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; flex-shrink: 0;">C</div>
+          <div>
+            <div style="font-size: 20px; font-weight: 800; line-height: 1.2;">欢迎使用 Control</div>
+            <div style="font-size: 12.5px; color: var(--mut); margin-top: 2px;">自制力工程 · 基于 CTDP / RSIP</div>
+          </div>
+          <button onClick="{{ onWelcomeClose }}" style="margin-left: auto; background: none; border: none; font-size: 22px; color: var(--mut); cursor: pointer; font-family: inherit; align-self: flex-start;">×</button>
+        </div>
+
+        <div style="font-size: 13.5px; color: var(--mut); line-height: 1.7; margin-top: 16px;">把意志力当成可工程化的系统。先理解四个核心机制，再开始你的第一条链。</div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 18px;">
+          <div style="display: flex; gap: 12px;">
+            <div style="width: 26px; height: 26px; border-radius: 7px; background: var(--sub); color: var(--fill-d); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; font-family: 'IBM Plex Mono', monospace;">链</div>
+            <div style="font-size: 13px; line-height: 1.6;"><b>任务链</b> · 坐上「神圣座位」完成一个节点，连胜 <b>#N</b> +1；一旦违规，整条链清零、储君继位，下次从 #1 重来。</div>
+          </div>
+          <div style="display: flex; gap: 12px;">
+            <div style="width: 26px; height: 26px; border-radius: 7px; background: var(--sub); color: var(--fill-d); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; font-family: 'IBM Plex Mono', monospace;">座</div>
+            <div style="font-size: 13px; line-height: 1.6;"><b>神圣座位 · 线性时延</b> · 用一个固定信号（如「打响指」）触发专注；预约链给你 15 分钟就位窗口，到点必须坐上座位。</div>
+          </div>
+          <div style="display: flex; gap: 12px;">
+            <div style="width: 26px; height: 26px; border-radius: 7px; background: var(--sub); color: var(--fill-d); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; font-family: 'IBM Plex Mono', monospace;">例</div>
+            <div style="font-size: 13px; line-height: 1.6;"><b>下必为例</b> · 走神或中断超过 2 分钟即判违规；判定只有两个选项，<b>永久生效、不可撤销</b>，写入判例库。</div>
+          </div>
+          <div style="display: flex; gap: 12px;">
+            <div style="width: 26px; height: 26px; border-radius: 7px; background: var(--sub); color: var(--fill-d); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; font-family: 'IBM Plex Mono', monospace;">策</div>
+            <div style="font-size: 13px; line-height: 1.6;"><b>国策（RSIP）</b> · 把反复出现的失败固化成层级规则，每天最多新增一条，违规级联作废。</div>
+          </div>
+        </div>
+
+        <div style="font-size: 12.5px; color: var(--faint); line-height: 1.6; margin-top: 16px; background: var(--sub); border-radius: 10px; padding: 11px 13px;">左侧导航贯穿全部模块：任务链 · 今日Agenda · 项目 · 任务组 · 习惯 · 国策 · 统计 · 判例 · 回收站 · 设置。随时可在「设置」里重看本引导或初始化数据。</div>
+
+        <div style="display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap;">
+          <button onClick="{{ onWelcomeFresh }}" style="flex: 1; min-width: 180px; padding: 13px 16px; background: var(--fill); color: var(--on-fill); border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;" style-hover="background: var(--fill-d);">清空示例，从零开始</button>
+          <button onClick="{{ onWelcomeClose }}" style="flex: 1; min-width: 180px; padding: 13px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; font-size: 14px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--faint2);">先用示例数据探索</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
   <sc-if value="{{ modalViolation }}" hint-placeholder-val="{{ false }}">
     <div data-screen-label="判定弹窗" style="position: fixed; inset: 0; z-index: 60; background: rgba(34,31,27,.4); display: flex; align-items: center; justify-content: center; padding: 20px;">
       <div style="width: 460px; max-width: 100%; background: var(--card); border-radius: 16px; padding: 24px 26px; box-shadow: 0 24px 64px rgba(34,31,27,.25);">
         <div style="font-size: 18px; font-weight: 700;">疑似违规 · 判定</div>
-        <div style="font-size: 13px; color: var(--mut); margin-top: 6px; line-height: 1.7;">{{ judgeContext }}<br>下必为例：你只有两个选项，判决即永久生效。</div>
+        <div style="font-size: 13px; color: var(--mut); margin-top: 6px; line-height: 1.7;">{{ judgeContext }}<br>走神或中断他事超过 2 分钟即构成违规。下必为例：你只有两个选项，判决即永久生效。</div>
         <input value="{{ violationText }}" onChange="{{ onViolationText }}" placeholder="描述该行为，如：中途回复了微信消息" style="width: 100%; margin-top: 14px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; font-family: inherit; outline: none;" style-focus="border-color: var(--ac);">
         <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 16px;">
           <button onClick="{{ onJudgeBreak }}" style="padding: 13px 16px; background: var(--card); border: 2px solid var(--dg); color: var(--dg); border-radius: 10px; font-size: 14.5px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: left;" style-hover="background: var(--dg-bg);">链条断裂 —— {{ heroName }} 清零，储君继位，下次从 #1 开始</button>
@@ -1183,9 +1262,13 @@ class Component extends DCLogic {
       violationText: '',
       modal: null,
       srcOpen: false,
+      initPending: false,
+      welcomeSeen: false,
       importMsg: '',
       rStale: '', rNode: '', rAction: '',
       seatPick: null, seatCapture: '',
+      seatMarker: '坐上书桌前那把椅子', auxSignal: '打一个响指',
+      welcomeSeen: false,
       chainEditMsg: '', chainDelPending: null,
       s3: { endpoint: '', region: 'auto', bucket: '', ak: '', sk: '', prefix: 'control/' },
       s3Msg: '',
@@ -1209,7 +1292,7 @@ class Component extends DCLogic {
   seedHabit(rate, days) {
     // returns ISO date strings (within last `days`) on which the habit was done
     const out = [];
-    const today = new Date('2026-06-11T00:00:00');
+    const today = new Date(this.todayIso() + 'T00:00:00');
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date(today.getTime() - i * 86400000);
       if (Math.abs(Math.sin(i * 2.7 + rate * 9)) < rate) {
@@ -1240,6 +1323,8 @@ class Component extends DCLogic {
         if (st.points == null) st.points = 100;
         if (!st.pet) st.pet = this.defaults().pet;
         if (!st.notify) st.notify = { enabled: false, err: '' };
+        if (!st.seatMarker) st.seatMarker = '坐上书桌前那把椅子';
+        if (!st.auxSignal) st.auxSignal = '打一个响指';
         // theme from pre-paint bootstrap (html[data-theme])
         try { st.theme = document.documentElement.getAttribute('data-theme') || 'light'; } catch (e) { st.theme = 'light'; }
         // repair corrupted chain data (leftover from earlier automated testing: all "新链" @ 0)
@@ -1299,7 +1384,32 @@ class Component extends DCLogic {
     this.setState({ theme: next });
   }
 
-  // ---------- notifications / reminders ----------
+  // ---------- 初始化：清空演示内容，从空白主链重新开始 ----------
+  initBlank() {
+    const id = 'c' + Date.now();
+    this.setState({
+      chains: [{ id, name: '主链', elite: true, streak: 0, best: 0, created: this.todayIso(), desc: '你的第一条任务链' }],
+      activeChainId: id,
+      aux: { streak: 0, active: false, endsAt: 0 },
+      session: { active: false, startedAt: 0, taskId: null, chainId: null },
+      tasks: [], nextTaskId: 1,
+      projects: [], collapsed: [], selProj: null, projDelPending: null,
+      cases: [],
+      clockLog: [],
+      log: new Array(70).fill(0),
+      todayMins: 0, todayNodes: 0, totalNodes: 0,
+      groups: [], groupRun: { active: false, groupId: null, idx: 0, cycle: 0, itemStartedAt: 0, paused: false, pausedAt: 0 },
+      habits: [],
+      rules: [], lastRuleAddDate: '', selRule: null, ruleDraft: { title: '', note: '', parent: '' }, ruleViolatePending: null,
+      trash: [],
+      points: 0, bets: [], betDraft: { desc: '', stake: 20 },
+      seatPick: null, seatCapture: '',
+      welcomeSeen: true,
+      initPending: false,
+      view: 'chain'
+    });
+  }
+
   async enableNotify() {
     if (!('Notification' in window)) { this.setState({ notify: { enabled: false, err: '当前环境不支持通知' } }); return; }
     let perm = Notification.permission;
@@ -1341,7 +1451,7 @@ class Component extends DCLogic {
   }
 
   // ---------- helpers ----------
-  activeChain() { return this.state.chains.find(c => c.id === this.state.activeChainId) || this.state.chains[0]; }
+  activeChain() { return this.state.chains.find(c => c.id === this.state.activeChainId) || this.state.chains[0] || { id: null, name: '主链', elite: false, streak: 0, best: 0, created: this.todayIso(), desc: '' }; }
   fmtMMSS(sec) { sec = Math.max(0, Math.round(sec)); const m = Math.floor(sec / 60), s = sec % 60; return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0'); }
   fmtHMS(sec) { sec = Math.max(0, Math.round(sec)); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0'); }
   nextTask() { const t = this.state.tasks; return t.find(x => x.kw === 'NEXT') || t.find(x => x.kw === 'TODO') || null; }
@@ -1367,7 +1477,8 @@ class Component extends DCLogic {
   buildOrg() {
     const s = this.state;
     const L = [];
-    L.push('#+TITLE: Control', '#+TODO: TODO NEXT | DONE CANCELLED', '#+STARTUP: overview', '');
+    L.push('#+TITLE: Control', '#+TODO: TODO NEXT | DONE CANCELLED', '#+STARTUP: overview');
+    L.push('#+SACRED_SEAT: ' + (s.seatMarker || ''), '#+AUX_SIGNAL: ' + (s.auxSignal || ''), '');
     L.push('* 任务链');
     s.chains.forEach(c => {
       L.push('** ' + (c.elite ? '★ ' : '') + c.name);
@@ -1435,9 +1546,9 @@ class Component extends DCLogic {
     L.push('');
     L.push('* 习惯');
     s.habits.forEach(h => {
-      const doneToday = h.history.indexOf('2026-06-11') >= 0;
+      const doneToday = h.history.indexOf(this.todayIso()) >= 0;
       L.push('** ' + (doneToday ? 'DONE' : 'TODO') + ' ' + h.title + (h.tags ? ' ' + h.tags : ''));
-      L.push('SCHEDULED: <2026-06-11 Thu ' + h.repeater + '>');
+      L.push('SCHEDULED: <' + this.todayIso() + ' ' + this._wd(new Date()) + ' ' + h.repeater + '>');
       L.push(':PROPERTIES:', ':STYLE:   habit', ':STREAK:  ' + this.habitStreak(h), ':BEST:    ' + h.best, ':END:');
       if (h.history.length) {
         L.push(':LOGBOOK:');
@@ -1501,7 +1612,7 @@ class Component extends DCLogic {
       { id: 'stats', label: '统计', icon: '统', badge: '' },
       { id: 'cases', label: '判例', icon: '判', badge: String(s.cases.length) },
       { id: 'trash', label: '回收站', icon: '收', badge: s.trash.length ? String(s.trash.length) : '' },
-      { id: 'storage', label: '存储', icon: '存', badge: s.lastBackup ? '✓' : '' }
+      { id: 'storage', label: '设置', icon: '设', badge: s.lastBackup ? '✓' : '' }
     ];
     const navItems = navDefs.map(n => ({
       label: n.label,
@@ -1517,7 +1628,7 @@ class Component extends DCLogic {
         color: s.view === n.id ? INK : 'var(--ink2)'
       }
     }));
-    const titles = { chain: '任务链', agenda: '今日 Agenda', projects: '项目大纲', groups: '任务组 · 嵌套链', habits: '习惯 · 连续性', rules: '国策 · RSIP 规则树', stats: '统计', cases: '判例库', trash: '回收站', storage: '存储与备份' };
+    const titles = { chain: '任务链', agenda: '今日 Agenda', projects: '项目大纲', groups: '任务组 · 嵌套链', habits: '习惯 · 连续性', rules: '国策 · RSIP 规则树', stats: '统计', cases: '判例库', trash: '回收站', storage: '设置' };
 
     // aux
     const auxRemain = (s.aux.endsAt - now) / 1000;
@@ -1757,7 +1868,8 @@ class Component extends DCLogic {
     // stats
     const last7 = s.log.slice(-7);
     const maxV = Math.max.apply(null, last7.concat([1]));
-    const dayNames = ['五', '六', '日', '一', '二', '三', '四'];
+    const wdShort = ['日', '一', '二', '三', '四', '五', '六'];
+    const dayNames = (function () { const out = []; const t = new Date(); for (let i = 6; i >= 0; i--) out.push(wdShort[new Date(t.getTime() - i * 86400000).getDay()]); return out; })();
     const bars = last7.map((v, i) => ({
       val: (v / 60).toFixed(1) + 'h',
       label: dayNames[i],
@@ -2067,8 +2179,8 @@ class Component extends DCLogic {
       // shell
       navItems,
       viewTitle: titles[s.view] || 'Control',
-      todayHuman: '2026年6月11日 · 周四',
-      todayOrgStamp: '<2026-06-11 Thu>',
+      todayHuman: (function () { const d = new Date(); return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 · ' + ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()]; })(),
+      todayOrgStamp: '<' + this.todayIso() + ' ' + this._wd(new Date()) + '>',
       vChain: s.view === 'chain', vAgenda: s.view === 'agenda', vProjects: s.view === 'projects',
       vRoutines: s.view === 'routines', vStats: s.view === 'stats', vCases: s.view === 'cases',
       vStorage: s.view === 'storage',
@@ -2131,6 +2243,10 @@ class Component extends DCLogic {
       auxRemainingStr: this.fmtMMSS(auxRemain),
       auxRingStyle: auxRing,
       onSnap: () => set({ aux: Object.assign({}, s.aux, { active: true, endsAt: Date.now() + 900000 }) }),
+      seatMarker: s.seatMarker || '坐上书桌前那把椅子',
+      auxSignal: s.auxSignal || '打一个响指',
+      onSeatMarker: e => set({ seatMarker: e.target.value }),
+      onAuxSignal: e => set({ auxSignal: e.target.value }),
       onSit: () => this.startSession(true),
 
       // mini + today
@@ -2218,6 +2334,15 @@ class Component extends DCLogic {
       themeIcon: s.theme === 'dark' ? '☀' : '☾',
       themeLabel: s.theme === 'dark' ? '深色' : '浅色',
       onToggleTheme: () => this.toggleTheme(),
+      initPending: !!s.initPending,
+      initIdle: !s.initPending,
+      onInitStart: () => set({ initPending: true }),
+      onInitCancel: () => set({ initPending: false }),
+      onInitConfirm: () => this.initBlank(),
+      showWelcome: !s.welcomeSeen && s.modal !== 'violation' && s.modal !== 'aux',
+      onWelcomeClose: () => set({ welcomeSeen: true }),
+      onWelcomeFresh: () => { this.setState({ welcomeSeen: true }); this.initBlank(); },
+      onOpenGuide: () => set({ welcomeSeen: false }),
       sbCollapsedClass: s.navCollapsed ? 'is-collapsed' : '',
       collapseIcon: s.navCollapsed ? '»' : '«  收起',
       collapseTitle: s.navCollapsed ? '展开侧栏' : '收起侧栏',
@@ -2289,7 +2414,7 @@ class Component extends DCLogic {
     };
   }
 
-  orgDate() { return '2026-06-11 Thu'; }
+  orgDate() { return this.todayIso() + ' ' + this._wd(new Date()); }
 
   toOrgDate(iso) {
     if (!iso) return '';
@@ -2299,18 +2424,22 @@ class Component extends DCLogic {
     return '<' + iso + ' ' + wd + '>';
   }
 
-  // ---------- "today" anchor (demo is pinned to 2026-06-11) ----------
-  todayIso() { return '2026-06-11'; }
+  // ---------- "today" anchor (real current date) ----------
+  _wd(d) { return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()]; }
+  todayIso() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
   nowStamp() {
     const d = new Date();
     const hh = String(d.getHours()).padStart(2, '0'), mm = String(d.getMinutes()).padStart(2, '0');
-    return '[' + this.todayIso() + ' Thu ' + hh + ':' + mm + ']';
+    return '[' + this.todayIso() + ' ' + this._wd(d) + ' ' + hh + ':' + mm + ']';
   }
   stampPlus(mins) {
     const base = new Date();
     const t = new Date(base.getTime() - mins * 60000);
     const hh = String(t.getHours()).padStart(2, '0'), mm = String(t.getMinutes()).padStart(2, '0');
-    return '[' + this.todayIso() + ' Thu ' + hh + ':' + mm + ']';
+    return '[' + this.todayIso() + ' ' + this._wd(t) + ' ' + hh + ':' + mm + ']';
   }
 
   // ---------- habit (org :STYLE: habit) ----------
@@ -2608,7 +2737,11 @@ class Component extends DCLogic {
       this.setState({ localFileState: 'connected', localFileName: h.name, localFileMsg: '' });
       this.writeLocalFile(true);
     } catch (e) {
-      if (e && e.name !== 'AbortError') this.setState({ localFileMsg: '✕ 连接失败：' + e.message });
+      if (e && e.name === 'SecurityError') {
+        this.setState({ localFileMsg: '✕ 当前为预览/嵌入环境，浏览器禁止子框架弹出文件选择器。请在独立标签页打开本应用（或部署后访问）再连接；此处可改用下方「下载 control.org」。' });
+      } else if (e && e.name !== 'AbortError') {
+        this.setState({ localFileMsg: '✕ 连接失败：' + e.message });
+      }
     }
   }
   async reconnectLocalFile() {

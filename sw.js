@@ -1,5 +1,5 @@
 /* Control — service worker (offline-first app shell) */
-const VERSION = 'control-v1';
+const VERSION = 'control-v2';
 const CORE = [
   './',
   './index.html',
@@ -34,16 +34,28 @@ self.addEventListener('fetch', (e) => {
   if (!sameOrigin && !isFont) return;
 
   if (sameOrigin) {
-    // cache-first for app shell, fall back to network, update cache
-    e.respondWith(
-      caches.match(req).then((hit) =>
-        hit || fetch(req).then((res) => {
+    // network-first for the app shell so updates always land; fall back to cache offline
+    const isShell = req.mode === 'navigate' || /\.(html|js|webmanifest)$/.test(url.pathname) || url.pathname.endsWith('/');
+    if (isShell) {
+      e.respondWith(
+        fetch(req).then((res) => {
           const copy = res.clone();
           caches.open(VERSION).then((c) => c.put(req, copy).catch(() => {}));
           return res;
-        }).catch(() => caches.match('./index.html'))
-      )
-    );
+        }).catch(() => caches.match(req).then((hit) => hit || caches.match('./index.html')))
+      );
+    } else {
+      // cache-first for static assets (icons, images)
+      e.respondWith(
+        caches.match(req).then((hit) =>
+          hit || fetch(req).then((res) => {
+            const copy = res.clone();
+            caches.open(VERSION).then((c) => c.put(req, copy).catch(() => {}));
+            return res;
+          }).catch(() => caches.match('./index.html'))
+        )
+      );
+    }
   } else if (isFont) {
     // stale-while-revalidate for fonts
     e.respondWith(
