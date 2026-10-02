@@ -58,6 +58,9 @@
     }
     body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Noto Sans SC', system-ui, sans-serif; transition: background .25s, color .25s; overflow-x: hidden; }
     @keyframes ctrlPulse { 0% { box-shadow: 0 0 0 0 rgba(59,95,196,.28); } 70% { box-shadow: 0 0 0 14px rgba(59,95,196,0); } 100% { box-shadow: 0 0 0 0 rgba(59,95,196,0); } }
+    @keyframes ctrlToastIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    .ctrl-toast { animation: ctrlToastIn .18s ease-out; }
+    .nav-more { display: none !important; }
 
     /* ===== mobile / narrow-screen responsive layer (overrides inline desktop styles) ===== */
     @media (max-width: 760px) {
@@ -82,19 +85,26 @@
         flex: 1 1 100% !important;
         gap: 5px !important;
       }
-      .sb-nav > div { white-space: nowrap; flex-shrink: 0; padding: 7px 11px !important; }
+      .sb-nav { flex-wrap: nowrap !important; gap: 2px !important; }
+      .sb-nav > div { white-space: nowrap; flex: 1 1 0 !important; min-width: 0; flex-direction: column !important; gap: 3px !important; padding: 6px 2px !important; margin-top: 0 !important; justify-content: center; }
       .sb-nav .nav-icon { display: inline-flex !important; align-items: center; justify-content: center; font-family: 'Noto Sans SC', system-ui, sans-serif; font-size: 16px; line-height: 1; }
-      .sb-nav .nav-label { display: none !important; }
+      .sb-nav .nav-label { display: inline !important; font-size: 10.5px; line-height: 1; }
       .sb-nav .nav-badge { display: none !important; }
-      .sb-foot { margin-top: 0 !important; flex-direction: row !important; flex-shrink: 0; gap: 6px !important; align-items: center; }
-      .sb-foot > div { flex-direction: row !important; }
+      .sb-nav .nav-secondary { display: none !important; }
+      .sb-nav .nav-more { display: flex !important; }
+      .sb-foot { display: none !important; }
+      .ctrl-toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important; }
       .sb-stamp { display: none !important; }
       .sb-collapse-btn { display: none !important; }
       .sb-brand-mark { display: none !important; }
       .app-main-inner { padding: 16px 14px 28px !important; }
       /* collapse every inline multi-column grid into a single column */
       [data-screen-label][style*="grid-template-columns"],
-      [data-screen-label] div[style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+      [data-screen-label] div[style*="grid-template-columns"] { grid-template-columns: minmax(0, 1fr) !important; }
+      /* 手机：链卡片横向滑动，并排到神圣座位之后，让核心操作更靠上 */
+      [data-screen-label] div.chain-cards[style] { display: flex !important; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x mandatory; }
+      .chain-cards > div { flex: 0 0 152px; scroll-snap-align: start; }
+      .chain-cards-wrap { order: 2; }
       /* hero number scales down so it never overflows */
       .app-main-inner [style*="font-size: 64px"] { font-size: 46px !important; }
     }
@@ -165,19 +175,41 @@
       <div style="display: flex; align-items: center; gap: 12px 16px; margin-bottom: 22px; flex-wrap: wrap;" class="view-header">
         <div style="font-size: 21px; font-weight: 700; flex-shrink: 0; white-space: nowrap;">{{ viewTitle }}</div>
         <div style="font-size: 13px; color: var(--mut); flex-shrink: 0; white-space: nowrap;">{{ todayHuman }}</div>
+        <sc-if value="{{ tipAvailable }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ onToggleTip }}" title="本页怎么用" style="{{ tipBtnStyle }}" style-hover="border-color: var(--ac); color: var(--ac);">? 怎么用</button>
+        </sc-if>
         <sc-if value="{{ auxChipShow }}" hint-placeholder-val="{{ false }}">
-          <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--ac); color: var(--ac); border-radius: 999px; padding: 4px 14px; background: var(--ac-bg);">
+          <div onClick="{{ goChain }}" style="margin-left: auto; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--ac); color: var(--ac); border-radius: 999px; padding: 4px 14px; background: var(--ac-bg); cursor: pointer;" title="回到任务链">
             <span style="font-size: 12.5px;">预约生效</span>
             <span style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 15px;">{{ auxRemainingStr }}</span>
           </div>
         </sc-if>
         <sc-if value="{{ sessChipShow }}" hint-placeholder-val="{{ false }}">
-          <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 4px 14px; background: var(--ink); color: var(--on-fill);">
+          <div onClick="{{ goChain }}" style="margin-left: auto; display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 4px 14px; background: var(--ink); color: var(--on-fill); cursor: pointer;" title="回到任务链">
             <span style="font-size: 12.5px;">神圣座位 · 专注中</span>
             <span style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 15px;">{{ sessElapsedStr }}</span>
           </div>
         </sc-if>
       </div>
+
+      <!-- 本页说明（首次进入自动展开，可随时用「? 怎么用」重开） -->
+      <sc-if value="{{ tipShow }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="本页说明" style="background: var(--ac-bg); border: 1px solid var(--ac-line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; align-items: baseline; gap: 10px;">
+            <div style="font-size: 14px; font-weight: 700; color: var(--ink);">{{ tipTitle }}</div>
+            <button onClick="{{ onDismissTip }}" style="margin-left: auto; padding: 5px 12px; background: var(--card); color: var(--ac); border: 1px solid var(--ac-line); border-radius: 7px; font-size: 12.5px; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0;" style-hover="border-color: var(--ac);">知道了</button>
+          </div>
+          <div style="font-size: 12.5px; color: var(--ink2); line-height: 1.7;">{{ tipIntro }}</div>
+          <div style="display: flex; flex-direction: column; gap: 7px;">
+            <sc-for list="{{ tipSteps }}" as="st" hint-placeholder-count="3">
+              <div style="display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.6; color: var(--ink);">
+                <span style="width: 20px; height: 20px; border-radius: 50%; background: var(--ac); color: #fff; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;">{{ st.n }}</span>
+                <span>{{ st.text }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
 
       <!-- ============ view: 任务链 ============ -->
       <sc-if value="{{ vChain }}" hint-placeholder-val="{{ true }}">
@@ -185,6 +217,36 @@
 
           <!-- left column -->
           <div style="display: flex; flex-direction: column; gap: 14px; min-width: 0;">
+
+            <!-- 新手清单：按真实操作自动打勾 -->
+            <sc-if value="{{ checklistShow }}" hint-placeholder-val="{{ false }}">
+              <div data-screen-label="新手清单" style="background: var(--card); border: 1px solid var(--ac-line); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                  <div style="font-size: 14.5px; font-weight: 700;">上手清单</div>
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ac); background: var(--ac-bg); border-radius: 5px; padding: 1px 8px;">{{ checklistProgress }}</span>
+                  <div style="flex: 1; min-width: 80px; height: 6px; background: var(--line2); border-radius: 3px; overflow: hidden;"><div style="height: 100%; background: var(--ac); border-radius: 3px; width: {{ checklistPct }};"></div></div>
+                  <button onClick="{{ onToggleChecklist }}" style="background: none; border: none; color: var(--ac); font-size: 12px; cursor: pointer; font-family: inherit; padding: 2px 4px; white-space: nowrap;" style-hover="text-decoration: underline;">{{ checklistToggleLabel }}</button>
+                  <button onClick="{{ onHideChecklist }}" style="background: none; border: none; color: var(--faint); font-size: 12px; cursor: pointer; font-family: inherit; padding: 2px 4px; white-space: nowrap;" style-hover="color: var(--ink2);">隐藏</button>
+                </div>
+                <sc-if value="{{ checklistExpanded }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size: 12px; color: var(--mut); line-height: 1.6;">照着做一遍，就走完了 CTDP 的完整闭环。每一项在你真正做到时自动打勾。</div>
+                </sc-if>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <sc-for list="{{ checklistItems }}" as="ck" hint-placeholder-count="7">
+                    <div style="{{ ck.rowStyle }}">
+                      <span style="{{ ck.boxStyle }}">{{ ck.box }}</span>
+                      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;">
+                        <span style="{{ ck.titleStyle }}">{{ ck.title }}</span>
+                        <span style="font-size: 11.5px; color: var(--faint); line-height: 1.5;">{{ ck.hint }}</span>
+                      </div>
+                      <sc-if value="{{ ck.hasAction }}" hint-placeholder-val="{{ true }}">
+                        <button onClick="{{ ck.onAction }}" style="padding: 5px 11px; background: var(--card); color: var(--ac); border: 1px solid var(--ac-line); border-radius: 7px; font-size: 12px; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0;" style-hover="background: var(--ac-bg);">{{ ck.actionLabel }}</button>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
 
             <!-- hero -->
             <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px; box-shadow: 0 1px 2px rgba(34,31,27,.04);">
@@ -208,12 +270,12 @@
             </div>
 
             <!-- chain cards -->
-            <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 8px;" class="chain-cards-wrap">
               <div style="display: flex; align-items: baseline; gap: 8px;">
                 <div style="font-size: 13px; color: var(--mut);">点击卡片切换激活链</div>
                 <button onClick="{{ onManageChains }}" style="margin-left: auto; display: flex; align-items: center; gap: 5px; background: none; border: none; color: var(--ac); font-size: 13px; cursor: pointer; font-family: inherit; padding: 2px 4px; white-space: nowrap; flex-shrink: 0;" style-hover="text-decoration: underline;">⚙ 管理链</button>
               </div>
-              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;">
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;" class="chain-cards">
                 <sc-for list="{{ chainCards }}" as="c" hint-placeholder-count="3">
                   <div style="{{ c.style }}" onClick="{{ c.onClick }}">
                     <div style="display: flex; align-items: center; gap: 6px;">
@@ -233,10 +295,15 @@
               <div style="background: var(--card); border: 1.5px solid var(--ink); border-radius: 14px; padding: 20px 24px; box-shadow: 0 2px 8px rgba(34,31,27,.07);">
                 <div style="display: flex; align-items: center; gap: 14px;">
                   <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
-                    <div style="font-size: 12.5px; color: var(--mut);">神圣座位 · 正在执行 节点 {{ nextNodeStr }}</div>
+                    <div style="font-size: 12.5px; color: var(--mut);">神圣座位 · {{ sessChainName }} · 正在执行 节点 {{ nextNodeStr }}</div>
                     <div style="font-size: 17px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ sessTaskTitle }}</div>
                   </div>
                   <div style="margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 42px; letter-spacing: -1px;">{{ sessElapsedStr }}</div>
+                </div>
+                <!-- 完成条件进度 -->
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 12px;">
+                  <div style="flex: 1; height: 8px; background: var(--line2); border-radius: 4px; overflow: hidden;"><div style="{{ sessTargetBarStyle }}"></div></div>
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: {{ sessTargetColor }}; white-space: nowrap; flex-shrink: 0;">{{ sessTargetStr }}</span>
                 </div>
                 <div style="display: flex; gap: 18px; align-items: center; margin-top: 14px; flex-wrap: wrap;">
                   <!-- pomodoro -->
@@ -248,36 +315,62 @@
                   </div>
                   <pre style="flex: 1; min-width: 240px; margin: 0; padding: 10px 12px; background: var(--sub); border: 1px solid var(--line2); border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; line-height: 1.6; color: var(--ink2); overflow: auto;">{{ sessOrg }}</pre>
                 </div>
-                <div style="display: flex; gap: 10px; margin-top: 16px;">
-                  <button onClick="{{ onCompleteNode }}" style="padding: 10px 22px; background: var(--ac); color: #fff; border: none; border-radius: 9px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;" style-hover="background: var(--ac-d);">完成节点 {{ nextNodeStr }} ✓</button>
+                <div style="display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; align-items: center;">
+                  <sc-if value="{{ sessReached }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ onCompleteNode }}" style="padding: 10px 22px; background: var(--ac); color: #fff; border: none; border-radius: 9px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; animation: ctrlPulse 2s infinite;" style-hover="background: var(--ac-d);">完成节点 {{ nextNodeStr }} ✓</button>
+                  </sc-if>
+                  <sc-if value="{{ sessNotReached }}" hint-placeholder-val="{{ true }}">
+                    <button onClick="{{ onEarlyEnd }}" title="未达完成条件就结束，需要判定" style="padding: 10px 18px; background: var(--card); color: var(--ink2); border: 1.5px solid var(--line); border-radius: 9px; font-size: 14px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--faint2);">提前结束…</button>
+                  </sc-if>
                   <button onClick="{{ onViolation }}" style="padding: 10px 18px; background: var(--card); color: var(--dg); border: 1.5px solid var(--dg); border-radius: 9px; font-size: 14px; cursor: pointer; font-family: inherit;" style-hover="background: var(--dg-bg);">报告疑似违规…</button>
-                  <div style="margin-left: auto; align-self: center; font-size: 12px; color: var(--faint);">走神 / 中断他事超过 2 分钟即判违规 →</div>
+                  <div style="margin-left: auto; font-size: 12px; color: var(--faint); line-height: 1.5;">{{ sessHint }}</div>
                 </div>
               </div>
             </sc-if>
 
             <sc-if value="{{ sessIdle }}" hint-placeholder-val="{{ true }}">
-              <div style="flex: 1; background: var(--card); border: 1px dashed var(--dash); border-radius: 14px; padding: 20px 24px; display: flex; flex-direction: column; gap: 12px;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <div style="font-size: 15px; font-weight: 700; color: var(--ink2);">神圣座位空着</div>
-                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--ac); background: var(--ac-bg); border-radius: 5px; padding: 2px 8px; white-space: nowrap;">下一节点 {{ nextNodeStr }}</span>
-                  <div style="margin-left: auto; font-size: 12px; color: var(--faint); white-space: nowrap;">选一条任务坐上座位</div>
+              <div style="{{ idlePanelStyle }}">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                  <div style="font-size: 15px; font-weight: 700; color: var(--ink2);">{{ idleTitle }}</div>
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--ac); background: var(--ac-bg); border-radius: 5px; padding: 2px 8px; white-space: nowrap;">{{ chainNameShort }} · 下一节点 {{ nextNodeStr }}</span>
                 </div>
 
-                <!-- 准备道具：神圣座位标志 + 启动信号（线性时延 · 可自定义） -->
-                <div style="display: flex; gap: 8px; flex-wrap: wrap; background: var(--sub); border: 1px solid var(--line2); border-radius: 9px; padding: 8px 10px;">
-                  <div style="flex: 1; min-width: 150px; display: flex; align-items: center; gap: 7px;">
-                    <span style="font-size: 11px; color: var(--faint); white-space: nowrap; flex-shrink: 0;">神圣座位</span>
-                    <input value="{{ seatMarker }}" onChange="{{ onSeatMarker }}" placeholder="定义你的触发标志" style="flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; font-family: inherit; outline: none; background: var(--card); color: var(--ink);" style-focus="border-color: var(--ac);">
+                <!-- 仪式设定：默认折叠成一行摘要，点「调整」再展开 -->
+                <sc-if value="{{ ritualCollapsed }}" hint-placeholder-val="{{ true }}">
+                  <div style="display: flex; align-items: center; gap: 6px 14px; flex-wrap: wrap; background: var(--sub); border: 1px solid var(--line2); border-radius: 9px; padding: 8px 12px; font-size: 12px; color: var(--mut);">
+                    <span>触发 <b style="color: var(--ink2); font-weight: 500;">{{ seatMarker }}</b></span>
+                    <span>完成条件 <b style="color: var(--ink2); font-weight: 500;">满 {{ chainMinsStr }}</b></span>
+                    <span>预约信号 <b style="color: var(--ink2); font-weight: 500;">{{ auxSignal }}</b></span>
+                    <button onClick="{{ onRitualEdit }}" style="margin-left: auto; background: none; border: none; color: var(--ac); font-size: 12px; cursor: pointer; font-family: inherit; padding: 0; white-space: nowrap;" style-hover="text-decoration: underline;">✎ 调整</button>
                   </div>
-                  <div style="flex: 1; min-width: 150px; display: flex; align-items: center; gap: 7px;">
-                    <span style="font-size: 11px; color: var(--faint); white-space: nowrap; flex-shrink: 0;">启动信号</span>
-                    <input value="{{ auxSignal }}" onChange="{{ onAuxSignal }}" placeholder="定义你的预约信号" style="flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; font-family: inherit; outline: none; background: var(--card); color: var(--ink);" style-focus="border-color: var(--ac);">
+                </sc-if>
+                <sc-if value="{{ ritualEditing }}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; flex-direction: column; gap: 9px; background: var(--sub); border: 1px solid var(--ac-line); border-radius: 9px; padding: 12px;">
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                      <span style="font-size: 12px; color: var(--mut); width: 64px; flex-shrink: 0;">触发标志</span>
+                      <input value="{{ seatMarker }}" onChange="{{ onSeatMarker }}" placeholder="只用于专注的固定动作 / 位置" style="flex: 1; min-width: 160px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; font-size: 12.5px; font-family: inherit; outline: none; background: var(--card); color: var(--ink);" style-focus="border-color: var(--ac);">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                      <span style="font-size: 12px; color: var(--mut); width: 64px; flex-shrink: 0;">完成条件</span>
+                      <sc-for list="{{ ritualMinsChips }}" as="m" hint-placeholder-count="4">
+                        <button onClick="{{ m.onPick }}" style="{{ m.style }}">{{ m.label }}</button>
+                      </sc-for>
+                      <span style="font-size: 11.5px; color: var(--faint);">（{{ chainNameShort }}）</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                      <span style="font-size: 12px; color: var(--mut); width: 64px; flex-shrink: 0;">预约信号</span>
+                      <input value="{{ auxSignal }}" onChange="{{ onAuxSignal }}" placeholder="一个随手可做的小动作" style="flex: 1; min-width: 160px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; font-size: 12.5px; font-family: inherit; outline: none; background: var(--card); color: var(--ink);" style-focus="border-color: var(--ac);">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-size: 11.5px; color: var(--faint); line-height: 1.5;">触发标志只用于专注；完成条件宁短勿断，改动从下个节点生效。</span>
+                      <button onClick="{{ onRitualDone }}" style="margin-left: auto; padding: 6px 14px; background: var(--ink); color: var(--on-fill); border: none; border-radius: 7px; font-size: 12.5px; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0;" style-hover="background: var(--fill-d);">完成</button>
+                    </div>
                   </div>
-                </div>
+                </sc-if>
 
                 <!-- task picker -->
-                <div style="flex: 1; min-height: 96px; display: flex; flex-direction: column; gap: 5px; overflow-y: auto; padding-right: 2px;">
+                <div style="font-size: 12px; color: var(--mut);">这一节点做什么？<span style="color: var(--faint);">（可不指定 —— 神圣座位只要求最好状态）</span></div>
+                <div style="flex: 1; min-height: 96px; max-height: 300px; display: flex; flex-direction: column; gap: 5px; overflow-y: auto; padding-right: 2px;">
                   <sc-for list="{{ seatTasks }}" as="t" hint-placeholder-count="4">
                     <div style="{{ t.style }}" style-hover="border-color: var(--faint2);" onClick="{{ t.onPick }}">
                       <span style="{{ t.radioStyle }}">{{ t.radio }}</span>
@@ -287,25 +380,36 @@
                       <span style="{{ t.metaStyle }}">{{ t.meta }}</span>
                     </div>
                   </sc-for>
-                  <sc-if value="{{ seatEmpty }}" hint-placeholder-val="{{ false }}">
-                    <div style="font-size: 12.5px; color: var(--faint); padding: 8px 2px;">今日没有待办任务 —— 在下方捕获一条，或去「今日」补充。</div>
-                  </sc-if>
                 </div>
 
                 <!-- inline capture -->
                 <div style="display: flex; gap: 8px;">
-                  <input value="{{ seatCapture }}" onChange="{{ onSeatCaptureChange }}" onKeyDown="{{ onSeatCaptureKey }}" placeholder="捕获新任务，回车加入并选中，如  论文修订 :突击:" style="flex: 1; min-width: 0; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; background: var(--sub);" style-focus="border-color: var(--ac); background: var(--card);">
+                  <input value="{{ seatCapture }}" onChange="{{ onSeatCaptureChange }}" onKeyDown="{{ onSeatCaptureKey }}" placeholder="捕获新任务，回车加入并选中，如  论文修订 :突击:" style="flex: 1; min-width: 0; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; background: var(--sub); color: var(--ink);" style-focus="border-color: var(--ac); background: var(--card);">
                   <button onClick="{{ onSeatCaptureAdd }}" style="padding: 9px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0;" style-hover="border-color: var(--faint2);">捕获</button>
                 </div>
 
-                <!-- actions -->
-                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--line2); padding-top: 12px;">
-                  <button onClick="{{ onStartNow }}" disabled="{{ seatEmpty }}" style="{{ seatStartStyle }}" style-hover="background: var(--fill-d);">{{ seatStartLabel }}</button>
-                  <sc-if value="{{ auxIdle }}" hint-placeholder-val="{{ true }}">
-                    <button onClick="{{ onSnap }}" style="padding: 10px 18px; background: var(--card); color: var(--ac); border: 1.5px solid var(--ac); border-radius: 9px; font-size: 14px; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0;" style-hover="background: var(--ac-bg);">打响指 · 预约 15 分钟</button>
-                  </sc-if>
-                  <div style="margin-left: auto; font-size: 12px; color: var(--faint); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">阻力大？先打响指，给自己 15 分钟缓冲</div>
-                </div>
+                <!-- actions：未预约 -->
+                <sc-if value="{{ auxIdle }}" hint-placeholder-val="{{ true }}">
+                  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--line2); padding-top: 12px;">
+                    <button onClick="{{ onStartNow }}" style="padding: 10px 22px; border-radius: 9px; font-size: 14.5px; font-weight: 700; font-family: inherit; white-space: nowrap; flex-shrink: 0; border: none; background: var(--fill); color: var(--on-fill); cursor: pointer;" style-hover="background: var(--fill-d);">{{ seatStartLabel }}</button>
+                    <button onClick="{{ onSnap }}" style="padding: 10px 18px; background: var(--card); color: var(--ac); border: 1.5px solid var(--ac); border-radius: 9px; font-size: 14px; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0;" style-hover="background: var(--ac-bg);">{{ snapLabel }}</button>
+                    <div style="margin-left: auto; font-size: 12px; color: var(--faint); line-height: 1.5;">现在就能开始 → 左边；阻力大 → 先预约，15 分钟内就位</div>
+                  </div>
+                </sc-if>
+
+                <!-- actions：预约生效中（线性时延） -->
+                <sc-if value="{{ auxActive }}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--line2); padding-top: 14px;">
+                    <div style="{{ auxRingStyle }}">
+                      <div style="width: 70px; height: 70px; border-radius: 50%; background: var(--card); display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 17px; color: var(--ac);">{{ auxRemainingStr }}</div>
+                    </div>
+                    <div style="flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 4px;">
+                      <div style="font-size: 14px; font-weight: 700; color: var(--ac);">预约生效 · 倒计时内必须就位</div>
+                      <div style="font-size: 12px; color: var(--mut); line-height: 1.6;">去「{{ seatMarker }}」，就位后点「已就位 · 开始」。预约不能撤回；超时会触发判定。</div>
+                    </div>
+                    <button onClick="{{ onSit }}" style="padding: 11px 20px; background: var(--ac); color: #fff; border: none; border-radius: 9px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="background: var(--ac-d);">已就位 · 开始 {{ nextNodeStr }}</button>
+                  </div>
+                </sc-if>
               </div>
             </sc-if>
           </div>
@@ -322,23 +426,12 @@
               </div>
 
               <sc-if value="{{ auxActive }}" hint-placeholder-val="{{ false }}">
-                <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 14px;">
-                  <div style="{{ auxRingStyle }}">
-                    <div style="width: 96px; height: 96px; border-radius: 50%; background: var(--card); display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                      <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 24px; color: var(--ac);">{{ auxRemainingStr }}</div>
-                    </div>
-                  </div>
-                  <div style="font-size: 12.5px; color: var(--ink2); text-align: center; line-height: 1.6;">倒计时内必须<b>坐上神圣座位</b><br><span style="color: var(--faint);">超时 = 触发判定</span></div>
-                  <button onClick="{{ onSit }}" style="width: 100%; padding: 11px; background: var(--ac); color: #fff; border: none; border-radius: 9px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;" style-hover="background: var(--ac-d);">坐上神圣座位 → 开始 {{ nextNodeStr }}</button>
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 9px 12px; background: var(--ac-bg); border: 1px solid var(--ac-line); border-radius: 9px;">
+                  <span style="font-size: 12.5px; color: var(--ac);">生效中 · 剩余</span>
+                  <span style="margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 16px; color: var(--ac);">{{ auxRemainingStr }}</span>
                 </div>
               </sc-if>
-
-              <sc-if value="{{ auxIdle }}" hint-placeholder-val="{{ true }}">
-                <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px;">
-                  <button onClick="{{ onSnap }}" style="width: 100%; padding: 13px; background: var(--card); color: var(--ac); border: 2px solid var(--ac); border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit;" style-hover="background: var(--ac-bg);">打响指 · 预约 15 分钟</button>
-                  <div style="font-size: 12px; color: var(--mut); line-height: 1.7;">「现在开始」阻力大，「15 分钟后开始」阻力小。响指一打，预约链生效 —— 15 分钟内必须坐上神圣座位。</div>
-                </div>
-              </sc-if>
+              <div style="font-size: 12px; color: var(--mut); line-height: 1.7; margin-top: 10px;">「现在开始」阻力大，「15 分钟后开始」阻力小。做出信号「{{ auxSignal }}」并点「预约」，预约链就生效 —— 15 分钟内必须坐上神圣座位，每次按时就位预约链 +1。</div>
             </div>
 
             <!-- mini agenda -->
@@ -453,10 +546,17 @@
                 <span style="{{ t.titleStyle }}">{{ t.title }}</span>
                 <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--faint); flex-shrink: 0; white-space: nowrap;">{{ t.tags }}</span>
                 <span style="{{ t.metaStyle }}">{{ t.meta }}</span>
+                <sc-if value="{{ t.canSeat }}" hint-placeholder-val="{{ true }}">
+                  <span onClick="{{ t.onSeat }}" title="选为下一节点的任务" style="font-size: 12px; color: var(--ac); cursor: pointer; flex-shrink: 0; white-space: nowrap;" style-hover="text-decoration: underline;">去专注 →</span>
+                </sc-if>
+                <span onClick="{{ t.onDelete }}" title="删除（进回收站）" style="cursor: pointer; color: var(--dash); font-size: 14px; flex-shrink: 0;" style-hover="color: var(--dg);">×</span>
               </div>
             </sc-for>
           </div>
-          <div style="font-size: 12px; color: var(--faint);">点击方框切换 TODO ⇄ DONE · 标签写法 :突击: :侦查: :指挥: :特勤: :工程: :炊事:</div>
+          <sc-if value="{{ agendaEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="color: var(--faint); font-size: 13px;">还没有任务。在上方输入一条，回车即可。</div>
+          </sc-if>
+          <div style="font-size: 12px; color: var(--faint); line-height: 1.6;">点方框切换 TODO ⇄ DONE · 「去专注 →」把它放上神圣座位 · 标签写法 :突击: :侦查: :指挥: :特勤: :工程: :炊事:</div>
         </div>
       </sc-if>
 
@@ -629,10 +729,13 @@
         <div data-screen-label="国策" style="max-width: 820px; display: flex; flex-direction: column; gap: 14px;">
           <div style="font-size: 13px; color: var(--mut); line-height: 1.7; max-width: 660px;">RSIP：把负面稳态回溯到「有效干预节点」，在那里立一条规则。规则是<b>层级树</b> —— 子规则是父规则的细化。<b>每天最多新增一条</b>；某条违规时，它连同所有子规则级联作废、进入回收站。</div>
 
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <button onClick="{{ onRuleBumpAll }}" style="padding: 8px 16px; background: var(--card); color: var(--ok); border: 1px solid var(--ok-line); border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--ok);">今日全部坚守 +1</button>
-            <div style="font-size: 12px; color: var(--faint);">点规则展开操作 · ◆ 顶层 / ◇ 子规则</div>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <button onClick="{{ onRuleBumpAll }}" style="{{ ruleBumpStyle }}">{{ ruleBumpLabel }}</button>
+            <div style="font-size: 12px; color: var(--faint); line-height: 1.5;">每晚回顾一次：全部守住就结算 +1（每天一次）；违反了哪条，点开它选「违规」。</div>
           </div>
+          <sc-if value="{{ rulesEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="color: var(--faint); font-size: 13px; padding: 4px 2px;">还没有国策。在下方按「负面稳态 → 干预节点 → 规则」立第一条。</div>
+          </sc-if>
 
           <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px;">
             <sc-for list="{{ ruleRows }}" as="r" hint-placeholder-count="5">
@@ -660,8 +763,8 @@
           </div>
 
           <!-- new rule -->
-          <div style="background: var(--sub); border: 1px dashed var(--dash); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;">
-            <div style="display: flex; align-items: baseline; gap: 8px;">
+          <div data-rule-form="1" style="{{ ruleFormStyle }}">
+            <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
               <div style="font-size: 13.5px; font-weight: 700;">立一条新国策</div>
               <span style="font-size: 12px; color: var(--mut);">{{ ruleDraftParentName }}</span>
               <sc-if value="{{ ruleHasParent }}" hint-placeholder-val="{{ false }}">
@@ -669,12 +772,23 @@
               </sc-if>
             </div>
             <sc-if value="{{ ruleCanAdd }}" hint-placeholder-val="{{ true }}">
-              <div style="display: flex; flex-direction: column; gap: 8px;">
-                <div style="display: flex; gap: 10px;">
-                  <input value="{{ ruleDraftTitle }}" onChange="{{ onRuleDraftTitle }}" placeholder="规则（具体、可执行）" style="flex: 1; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; background: var(--card);" style-focus="border-color: var(--ac);">
-                  <button onClick="{{ onRuleAdd }}" style="padding: 9px 20px; background: var(--ac); color: #fff; border: none; border-radius: 8px; font-size: 13.5px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="background: var(--ac-d);">立规</button>
-                </div>
-                <input value="{{ ruleDraftNote }}" onChange="{{ onRuleDraftNote }}" placeholder="回溯点 / 备注（可选）" style="padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 12.5px; font-family: inherit; outline: none; background: var(--card); color: var(--ink2);" style-focus="border-color: var(--ac);">
+              <div style="display: flex; flex-direction: column; gap: 9px;">
+                <label style="display: flex; flex-direction: column; gap: 4px;">
+                  <span style="font-size: 12px; color: var(--mut);"><b style="color: var(--ink2);">① 负面稳态</b> · 反复出现、自己掉进去就出不来的状态</span>
+                  <input value="{{ ruleDraftStale }}" onChange="{{ onRuleDraftStale }}" placeholder="如：睡前刷手机到凌晨 1 点" style="padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; background: var(--card); color: var(--ink);" style-focus="border-color: var(--ac);">
+                </label>
+                <label style="display: flex; flex-direction: column; gap: 4px;">
+                  <span style="font-size: 12px; color: var(--mut);"><b style="color: var(--ink2);">② 干预节点</b> · 往前回溯：最早、最容易拦住它的那一刻</span>
+                  <input value="{{ ruleDraftNode }}" onChange="{{ onRuleDraftNode }}" placeholder="如：带着手机走进卧室" style="padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; background: var(--card); color: var(--ink);" style-focus="border-color: var(--ac);">
+                </label>
+                <label style="display: flex; flex-direction: column; gap: 4px;">
+                  <span style="font-size: 12px; color: var(--mut);"><b style="color: var(--ink2);">③ 规则</b> · 在干预节点上做什么 —— 具体到能判断守没守住</span>
+                  <div style="display: flex; gap: 10px;">
+                    <input value="{{ ruleDraftTitle }}" onChange="{{ onRuleDraftTitle }}" onKeyDown="{{ onRuleDraftKey }}" placeholder="如：就寝前手机留在客厅充电" style="flex: 1; min-width: 0; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; background: var(--card); color: var(--ink);" style-focus="border-color: var(--ac);">
+                    <button onClick="{{ onRuleAdd }}" style="padding: 9px 20px; background: var(--ac); color: #fff; border: none; border-radius: 8px; font-size: 13.5px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="background: var(--ac-d);">立规</button>
+                  </div>
+                </label>
+                <div style="font-size: 11.5px; color: var(--faint); line-height: 1.6;">① ② 可留空，但想清楚它们，规则才会立在真正起作用的位置。今天立了就要等到明天才能再立。</div>
               </div>
             </sc-if>
             <sc-if value="{{ ruleCannotAdd }}" hint-placeholder-val="{{ false }}">
@@ -741,7 +855,10 @@
               </div>
             </div>
             <div style="background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px;">
-              <div style="font-size: 13.5px; font-weight: 700; margin-bottom: 12px;">兵种分布（本周）</div>
+              <div style="font-size: 13.5px; font-weight: 700; margin-bottom: 12px;">兵种分布（近 7 天，按任务标签）</div>
+              <sc-if value="{{ tagBarsEmpty }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size: 12.5px; color: var(--faint); line-height: 1.6;">近 7 天还没有带标签的专注记录。给任务加上 :突击: 之类的标签，完成节点后这里就会出现分布。</div>
+              </sc-if>
               <div style="display: flex; flex-direction: column; gap: 9px;">
                 <sc-for list="{{ tagBars }}" as="g" hint-placeholder-count="5">
                   <div style="display: flex; align-items: center; gap: 10px; font-size: 12.5px;">
@@ -826,9 +943,12 @@
             <div style="border-top: 1px solid var(--line2); padding-top: 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
               <div style="display: flex; flex-direction: column; gap: 2px; max-width: 440px;">
                 <div style="font-size: 13.5px; font-weight: 700;">新手引导</div>
-                <div style="font-size: 12px; color: var(--mut); line-height: 1.6;">重新打开欢迎引导，回顾任务链 / 神圣座位 / 下必为例 / 国策四个核心机制。</div>
+                <div style="font-size: 12px; color: var(--mut); line-height: 1.6;">分步引导会带你重新设定触发标志、完成条件和预约信号；也可以把任务链页的上手清单和各页面的「怎么用」说明重新显示出来。</div>
               </div>
-              <button onClick="{{ onOpenGuide }}" style="margin-left: auto; flex-shrink: 0; padding: 9px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--faint2);">重看引导</button>
+              <div style="margin-left: auto; display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap;">
+                <button onClick="{{ onResetTips }}" style="padding: 9px 14px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--faint2);">重新显示清单与说明</button>
+                <button onClick="{{ onOpenGuide }}" style="padding: 9px 16px; background: var(--fill); color: var(--on-fill); border: none; border-radius: 9px; font-size: 13px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="background: var(--fill-d);">重看分步引导</button>
+              </div>
             </div>
             <div style="border-top: 1px solid var(--line2); padding-top: 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
               <div style="display: flex; flex-direction: column; gap: 2px; max-width: 440px;">
@@ -898,8 +1018,8 @@
               </sc-if>
 
               <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                <a href="{{ orgHref }}" download="control.org" style="padding: 8px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; text-decoration: none; font-family: inherit; white-space: nowrap;">下载 control.org</a>
-                <a href="{{ stateHref }}" download="control.state.json" style="padding: 8px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; text-decoration: none; font-family: inherit; white-space: nowrap;">下载完整状态 .json</a>
+                <a href="{{ orgHref }}" download="control.org" onClick="{{ onMarkBackup }}" style="padding: 8px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; text-decoration: none; font-family: inherit; white-space: nowrap;">下载 control.org</a>
+                <a href="{{ stateHref }}" download="control.state.json" onClick="{{ onMarkBackup }}" style="padding: 8px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; text-decoration: none; font-family: inherit; white-space: nowrap;">下载完整状态 .json</a>
                 <label style="padding: 8px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; cursor: pointer; white-space: nowrap;">导入状态 .json<input type="file" accept=".json,application/json" onChange="{{ onImportState }}" style="display: none;"></label>
               </div>
               <span style="font-size: 12px; color: var(--ac); min-height: 15px;">{{ localFileMsg }}</span>
@@ -978,7 +1098,7 @@
         </div>
         <textarea value="{{ orgSource }}" readOnly="{{ true }}" style="flex: 1; resize: none; border: 1px solid var(--line); border-radius: 10px; padding: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 1.65; color: var(--fill-d); background: var(--sub); outline: none; white-space: pre;"></textarea>
         <div style="display: flex; gap: 10px; margin-top: 12px; align-items: center;">
-          <a href="{{ orgHref }}" download="control.org" style="padding: 9px 18px; background: var(--ink); color: var(--on-fill); border-radius: 8px; font-size: 13.5px; text-decoration: none; font-family: inherit; white-space: nowrap; flex-shrink: 0;">下载 .org</a>
+          <a href="{{ orgHref }}" download="control.org" onClick="{{ onMarkBackup }}" style="padding: 9px 18px; background: var(--ink); color: var(--on-fill); border-radius: 8px; font-size: 13.5px; text-decoration: none; font-family: inherit; white-space: nowrap; flex-shrink: 0;">下载 .org</a>
           <label style="padding: 9px 18px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 13.5px; cursor: pointer; white-space: nowrap; flex-shrink: 0;">
             导入 .org（追加任务）<input type="file" accept=".org,.txt" onChange="{{ onImport }}" style="display: none;">
           </label>
@@ -988,61 +1108,187 @@
     </div>
   </sc-if>
 
-  <!-- ================= 新手引导：欢迎 ================= -->
+  <!-- ================= 新手引导：分步设置 ================= -->
   <sc-if value="{{ showWelcome }}" hint-placeholder-val="{{ false }}">
-    <div data-screen-label="新手引导" style="position: fixed; inset: 0; z-index: 70; background: rgba(34,31,27,.46); display: flex; align-items: center; justify-content: center; padding: 20px; overflow: auto;">
-      <div style="width: 560px; max-width: 100%; background: var(--card); border-radius: 18px; padding: 28px 30px; box-shadow: 0 24px 64px rgba(34,31,27,.28); margin: auto;">
+    <div data-screen-label="新手引导" style="position: fixed; inset: 0; z-index: 70; background: var(--scrim); display: flex; align-items: center; justify-content: center; padding: 16px; overflow: auto;">
+      <div style="width: 600px; max-width: 100%; background: var(--card); border-radius: 18px; padding: 24px 26px 20px; box-shadow: 0 24px 64px var(--shadow); margin: auto; display: flex; flex-direction: column; gap: 16px;">
         <div style="display: flex; align-items: center; gap: 12px;">
-          <div style="width: 40px; height: 40px; border-radius: 10px; background: var(--fill); color: var(--on-fill); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; flex-shrink: 0;">C</div>
-          <div>
-            <div style="font-size: 20px; font-weight: 800; line-height: 1.2;">欢迎使用 Control</div>
-            <div style="font-size: 12.5px; color: var(--mut); margin-top: 2px;">自制力工程 · 基于 CTDP / RSIP</div>
+          <div style="width: 40px; height: 40px; border-radius: 10px; background: var(--fill); color: var(--on-fill); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; flex-shrink: 0; font-family: 'IBM Plex Mono', monospace;">{{ guideBadge }}</div>
+          <div style="min-width: 0;">
+            <div style="font-size: 19px; font-weight: 800; line-height: 1.25;">{{ guideTitle }}</div>
+            <div style="font-size: 12px; color: var(--mut); margin-top: 2px;">{{ guideKicker }}</div>
           </div>
-          <button onClick="{{ onWelcomeClose }}" style="margin-left: auto; background: none; border: none; font-size: 22px; color: var(--mut); cursor: pointer; font-family: inherit; align-self: flex-start;">×</button>
+          <button onClick="{{ onWelcomeClose }}" title="跳过引导" style="margin-left: auto; background: none; border: none; font-size: 22px; color: var(--mut); cursor: pointer; font-family: inherit; align-self: flex-start;">×</button>
+        </div>
+        <div style="display: flex; gap: 5px;">
+          <sc-for list="{{ guideDots }}" as="d" hint-placeholder-count="7">
+            <div style="{{ d.style }}"></div>
+          </sc-for>
         </div>
 
-        <div style="font-size: 13.5px; color: var(--mut); line-height: 1.7; margin-top: 16px;">把意志力当成可工程化的系统。先理解四个核心机制，再开始你的第一条链。</div>
+        <!-- 0 欢迎 -->
+        <sc-if value="{{ guideS0 }}" hint-placeholder-val="{{ true }}">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="font-size: 13.5px; color: var(--ink2); line-height: 1.75;">Control 把自制力当成一个<b>工程问题</b>：不靠一时的意志力硬扛，而是用几条简单的规则，把「破戒」的代价放大，把「开始」的门槛压低。</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div style="background: var(--sub); border: 1px solid var(--line2); border-radius: 11px; padding: 11px 13px; font-size: 12.5px; line-height: 1.6; color: var(--ink2);"><b style="color: var(--ink);">神圣座位</b><br>每次专注都是链上的一环，#1 #2 #3…… 违规一次就清零。</div>
+              <div style="background: var(--sub); border: 1px solid var(--line2); border-radius: 11px; padding: 11px 13px; font-size: 12.5px; line-height: 1.6; color: var(--ink2);"><b style="color: var(--ink);">下必为例</b><br>灰色地带当场判决：要么算违规，要么永久允许。</div>
+              <div style="background: var(--sub); border: 1px solid var(--line2); border-radius: 11px; padding: 11px 13px; font-size: 12.5px; line-height: 1.6; color: var(--ink2);"><b style="color: var(--ink);">线性时延</b><br>把「现在开始」换成「做个信号，15 分钟内开始」。</div>
+              <div style="background: var(--sub); border: 1px solid var(--line2); border-radius: 11px; padding: 11px 13px; font-size: 12.5px; line-height: 1.6; color: var(--ink2);"><b style="color: var(--ink);">国策（RSIP）</b><br>从反复失控的源头立规则，一天最多一条。</div>
+            </div>
+            <div style="font-size: 12.5px; color: var(--mut); line-height: 1.7;">接下来 5 步，帮你定好<b>自己的</b>触发标志、完成条件和预约信号，大约 2 分钟。也可以先跳过，用示例数据随便点点看。</div>
+          </div>
+        </sc-if>
 
-        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 18px;">
-          <div style="display: flex; gap: 12px;">
-            <div style="width: 26px; height: 26px; border-radius: 7px; background: var(--sub); color: var(--fill-d); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; font-family: 'IBM Plex Mono', monospace;">链</div>
-            <div style="font-size: 13px; line-height: 1.6;"><b>任务链</b> · 坐上「神圣座位」完成一个节点，连胜 <b>#N</b> +1；一旦违规，整条链清零、储君继位，下次从 #1 重来。</div>
+        <!-- 1 神圣座位 -->
+        <sc-if value="{{ guideS1 }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="font-size: 13.5px; color: var(--ink2); line-height: 1.75;">选一个<b>只用于专注</b>的固定动作或位置，作为「神圣座位」。一旦触发，就必须以最好的状态专注，直到满足完成条件。每完成一次，链就 +1；中途违规一次，<b>整条链清零</b>。</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--mut); background: var(--sub); border-radius: 9px; padding: 9px 12px; line-height: 1.7;">#1 → #2 → … → #12 → <span style="color: var(--dg);">✕ 违规</span> → #0<br><span style="font-family: 'Noto Sans SC', system-ui, sans-serif;">链越长，「就这一次」的代价就越大，这正是约束力的来源。</span></div>
+            <label style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="font-size: 12.5px; font-weight: 700;">你的触发标志</span>
+              <input value="{{ seatMarker }}" onChange="{{ onSeatMarker }}" placeholder="如：坐上书桌前那把椅子" style="padding: 10px 13px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; font-family: inherit; outline: none; background: var(--card); color: var(--ink);" style-focus="border-color: var(--ac);">
+            </label>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <sc-for list="{{ guideMarkerChips }}" as="c" hint-placeholder-count="4">
+                <button onClick="{{ c.onPick }}" style="{{ c.style }}">{{ c.label }}</button>
+              </sc-for>
+            </div>
+            <div style="font-size: 12px; color: var(--faint); line-height: 1.6;">别选「打开电脑」这种日常动作。它必须足够特别：做了就意味着「现在是最好状态」。</div>
           </div>
-          <div style="display: flex; gap: 12px;">
-            <div style="width: 26px; height: 26px; border-radius: 7px; background: var(--sub); color: var(--fill-d); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; font-family: 'IBM Plex Mono', monospace;">座</div>
-            <div style="font-size: 13px; line-height: 1.6;"><b>神圣座位 · 线性时延</b> · 用一个固定信号（如「打响指」）触发专注；预约链给你 15 分钟就位窗口，到点必须坐上座位。</div>
+        </sc-if>
+
+        <!-- 2 完成条件 -->
+        <sc-if value="{{ guideS2 }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="font-size: 13.5px; color: var(--ink2); line-height: 1.75;">节点必须有<b>事先定好</b>的完成条件，不然就会滑向「差不多就行」。在 Control 里，完成条件就是专注时长：计时满了才出现「完成节点」按钮；想提前结束，就要走一次判定。</div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="font-size: 12.5px; font-weight: 700;">每个节点专注多久？</span>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <sc-for list="{{ guideMinsChips }}" as="c" hint-placeholder-count="4">
+                  <button onClick="{{ c.onPick }}" style="{{ c.style }}">{{ c.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="font-size: 12px; color: var(--faint); line-height: 1.6;">建议宁短勿断：连续 10 次 25 分钟，比断了 3 次的 90 分钟更有用。之后可以在「管理链」或座位上方的「✎ 调整」里随时修改。</div>
           </div>
-          <div style="display: flex; gap: 12px;">
-            <div style="width: 26px; height: 26px; border-radius: 7px; background: var(--sub); color: var(--fill-d); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; font-family: 'IBM Plex Mono', monospace;">例</div>
-            <div style="font-size: 13px; line-height: 1.6;"><b>下必为例</b> · 走神或中断超过 2 分钟即判违规；判定只有两个选项，<b>永久生效、不可撤销</b>，写入判例库。</div>
+        </sc-if>
+
+        <!-- 3 下必为例 -->
+        <sc-if value="{{ guideS3 }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="font-size: 13.5px; color: var(--ink2); line-height: 1.75;">专注时总会遇到模糊情况：上厕所算不算？快递电话接不接？要是每次都说「下不为例」，规则就会一点点被蚕食。所以这里改成<b>「下必为例」</b>：点「报告疑似违规」，当场二选一。</div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="padding: 11px 14px; border: 2px solid var(--dg); color: var(--dg); border-radius: 10px; font-size: 13px; font-weight: 700;">判为违规 —— 链断，清零，从 #1 重来</div>
+              <div style="padding: 11px 14px; border: 2px solid var(--ac); color: var(--ac); border-radius: 10px; font-size: 13px; font-weight: 700;">永久允许 —— 写入判例库，以后同类情况一律合法</div>
+            </div>
+            <div style="font-size: 12.5px; color: var(--mut); line-height: 1.7;">判例只会增加、不能删除，所以规则只会越来越清楚，不会越来越松。下次再遇到同样的情况，判定弹窗会直接列出已有判例，属于判例就继续专注，不必再纠结。</div>
+            <div style="font-size: 12px; color: var(--faint);">默认红线：走神或去做别的事超过 2 分钟。</div>
           </div>
-          <div style="display: flex; gap: 12px;">
-            <div style="width: 26px; height: 26px; border-radius: 7px; background: var(--sub); color: var(--fill-d); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; font-family: 'IBM Plex Mono', monospace;">策</div>
-            <div style="font-size: 13px; line-height: 1.6;"><b>国策（RSIP）</b> · 把反复出现的失败固化成层级规则，每天最多新增一条，违规级联作废。</div>
+        </sc-if>
+
+        <!-- 4 线性时延 -->
+        <sc-if value="{{ guideS4 }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="font-size: 13.5px; color: var(--ink2); line-height: 1.75;">最难的一步是「现在就开始」。把它拆成两步：先做一个<b>几乎零成本的预约信号</b>，然后在 <b>15 分钟内</b>坐上神圣座位。预约本身也是一条链（预约链）：按时就位 +1，超时没坐下同样要判定。</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--mut); background: var(--sub); border-radius: 9px; padding: 9px 12px;">信号 → <span style="color: var(--ac);">15:00 倒计时</span> → 坐上神圣座位 → 节点开始计时</div>
+            <label style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="font-size: 12.5px; font-weight: 700;">你的预约信号</span>
+              <input value="{{ auxSignal }}" onChange="{{ onAuxSignal }}" placeholder="如：打一个响指" style="padding: 10px 13px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; font-family: inherit; outline: none; background: var(--card); color: var(--ink);" style-focus="border-color: var(--ac);">
+            </label>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <sc-for list="{{ guideSignalChips }}" as="c" hint-placeholder-count="4">
+                <button onClick="{{ c.onPick }}" style="{{ c.style }}">{{ c.label }}</button>
+              </sc-for>
+            </div>
           </div>
+        </sc-if>
+
+        <!-- 5 国策 -->
+        <sc-if value="{{ guideS5 }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; gap: 11px;">
+            <div style="font-size: 13.5px; color: var(--ink2); line-height: 1.75;">生活里有些坏状态会反复出现（<b>负面稳态</b>）。顺着它往前找，找到最早、最容易拦住它的那一刻（<b>干预节点</b>），在那里立一条具体的规则。规则会长成一棵树：子规则细化父规则；<b>每天最多新增一条</b>，违反哪条，它连同子规则一起作废。</div>
+            <input value="{{ ruleDraftStale }}" onChange="{{ onRuleDraftStale }}" placeholder="① 负面稳态，如：睡前刷手机到凌晨 1 点" style="padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; background: var(--card); color: var(--ink);" style-focus="border-color: var(--ac);">
+            <input value="{{ ruleDraftNode }}" onChange="{{ onRuleDraftNode }}" placeholder="② 干预节点，如：带着手机走进卧室" style="padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; background: var(--card); color: var(--ink);" style-focus="border-color: var(--ac);">
+            <input value="{{ ruleDraftTitle }}" onChange="{{ onRuleDraftTitle }}" placeholder="③ 规则，如：就寝前手机留在客厅充电" style="padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; background: var(--card); color: var(--ink);" style-focus="border-color: var(--ac);">
+            <div style="font-size: 12px; color: var(--faint); line-height: 1.6;">可选。填了「③ 规则」，完成引导时就会立下你的第一条国策；留空也可以，之后到「国策」页再立。</div>
+          </div>
+        </sc-if>
+
+        <!-- 6 准备好了 -->
+        <sc-if value="{{ guideS6 }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="background: var(--sub); border: 1px solid var(--line2); border-radius: 11px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px;">
+              <div><span style="color: var(--mut); display: inline-block; width: 76px;">触发标志</span>{{ seatMarker }}</div>
+              <div><span style="color: var(--mut); display: inline-block; width: 76px;">完成条件</span>每个节点专注满 {{ guideMinsStr }}</div>
+              <div><span style="color: var(--mut); display: inline-block; width: 76px;">预约信号</span>{{ auxSignal }} → 15 分钟内就位</div>
+              <div><span style="color: var(--mut); display: inline-block; width: 76px;">第一条国策</span>{{ guideRuleSummary }}</div>
+            </div>
+            <div style="font-size: 13px; font-weight: 700;">你的第一个节点，这样走：</div>
+            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--ink2); line-height: 1.6;">
+              <div>1. 在任务链页的座位里捕获一条今天要做的事（也可以不指定任务）。</div>
+              <div>2. 做出预约信号「{{ auxSignal }}」，点「预约 15 分钟」。</div>
+              <div>3. 15 分钟内来到「{{ seatMarker }}」，点「已就位 · 开始」。</div>
+              <div>4. 专注满 {{ guideMinsStr }}，点「完成节点」，拿到你的 #1。</div>
+            </div>
+            <div style="font-size: 12px; color: var(--faint); line-height: 1.6;">任务链页顶部的「上手清单」会陪你走完这几步；每个页面右上角的「? 怎么用」随时能重新打开说明。</div>
+          </div>
+        </sc-if>
+
+        <!-- footer -->
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--line2); padding-top: 14px;">
+          <sc-if value="{{ guideHasPrev }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ onGuidePrev }}" style="padding: 10px 16px; background: var(--card); color: var(--ink2); border: 1px solid var(--line); border-radius: 9px; font-size: 13.5px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--faint2);">← 上一步</button>
+          </sc-if>
+          <sc-if value="{{ guideS0 }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ onWelcomeClose }}" style="padding: 10px 14px; background: none; color: var(--mut); border: none; font-size: 13px; cursor: pointer; font-family: inherit;" style-hover="color: var(--ink2);">跳过，先看示例</button>
+          </sc-if>
+          <sc-if value="{{ guideHasNext }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ onGuideNext }}" style="margin-left: auto; padding: 11px 22px; background: var(--fill); color: var(--on-fill); border: none; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;" style-hover="background: var(--fill-d);">{{ guideNextLabel }}</button>
+          </sc-if>
+          <sc-if value="{{ guideS6 }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap;">
+              <button onClick="{{ onGuideFinishDemo }}" style="padding: 11px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; font-size: 13.5px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--faint2);">保留示例数据，先逛逛</button>
+              <button onClick="{{ onGuideFinishFresh }}" style="padding: 11px 18px; background: var(--fill); color: var(--on-fill); border: none; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;" style-hover="background: var(--fill-d);">清空示例，从零开始</button>
+            </div>
+          </sc-if>
         </div>
-
-        <div style="font-size: 12.5px; color: var(--faint); line-height: 1.6; margin-top: 16px; background: var(--sub); border-radius: 10px; padding: 11px 13px;">左侧导航贯穿全部模块：任务链 · 今日Agenda · 项目 · 任务组 · 习惯 · 国策 · 统计 · 判例 · 回收站 · 设置。随时可在「设置」里重看本引导或初始化数据。</div>
-
-        <div style="display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap;">
-          <button onClick="{{ onWelcomeFresh }}" style="flex: 1; min-width: 180px; padding: 13px 16px; background: var(--fill); color: var(--on-fill); border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;" style-hover="background: var(--fill-d);">清空示例，从零开始</button>
-          <button onClick="{{ onWelcomeClose }}" style="flex: 1; min-width: 180px; padding: 13px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; font-size: 14px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--faint2);">先用示例数据探索</button>
-        </div>
+        <sc-if value="{{ guideS6 }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size: 11.5px; color: var(--faint); line-height: 1.6; margin-top: -6px;">「从零开始」会清空示例的链、任务、项目、习惯、国策和判例，只保留你刚才的设置。</div>
+        </sc-if>
       </div>
     </div>
   </sc-if>
 
+  <!-- ================= 判定弹窗：疑似违规 / 提前结束（下必为例） ================= -->
   <sc-if value="{{ modalViolation }}" hint-placeholder-val="{{ false }}">
-    <div data-screen-label="判定弹窗" style="position: fixed; inset: 0; z-index: 60; background: rgba(34,31,27,.4); display: flex; align-items: center; justify-content: center; padding: 20px;">
-      <div style="width: 460px; max-width: 100%; background: var(--card); border-radius: 16px; padding: 24px 26px; box-shadow: 0 24px 64px rgba(34,31,27,.25);">
-        <div style="font-size: 18px; font-weight: 700;">疑似违规 · 判定</div>
-        <div style="font-size: 13px; color: var(--mut); margin-top: 6px; line-height: 1.7;">{{ judgeContext }}<br>走神或中断他事超过 2 分钟即构成违规。下必为例：你只有两个选项，判决即永久生效。</div>
-        <input value="{{ violationText }}" onChange="{{ onViolationText }}" placeholder="描述该行为，如：中途回复了微信消息" style="width: 100%; margin-top: 14px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; font-family: inherit; outline: none;" style-focus="border-color: var(--ac);">
-        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 16px;">
-          <button onClick="{{ onJudgeBreak }}" style="padding: 13px 16px; background: var(--card); border: 2px solid var(--dg); color: var(--dg); border-radius: 10px; font-size: 14.5px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: left;" style-hover="background: var(--dg-bg);">链条断裂 —— {{ heroName }} 清零，储君继位，下次从 #1 开始</button>
-          <button onClick="{{ onJudgeAllow }}" style="padding: 13px 16px; background: var(--card); border: 2px solid var(--ac); color: var(--ac); border-radius: 10px; font-size: 14.5px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: left;" style-hover="background: var(--ac-bg);">永久允许 —— 写入判例库，今后同类情况一律放行</button>
+    <div data-screen-label="判定弹窗" style="position: fixed; inset: 0; z-index: 60; background: var(--scrim); display: flex; align-items: center; justify-content: center; padding: 20px; overflow: auto;">
+      <div style="width: 480px; max-width: 100%; background: var(--card); border-radius: 16px; padding: 24px 26px; box-shadow: 0 24px 64px var(--shadow); margin: auto;">
+        <div style="font-size: 18px; font-weight: 700;">{{ judgeTitle }}</div>
+        <div style="font-size: 13px; color: var(--mut); margin-top: 6px; line-height: 1.7;">{{ judgeContext }}<br>{{ judgeRule }}</div>
+
+        <sc-if value="{{ judgeHasCases }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top: 14px; background: var(--sub); border: 1px solid var(--line2); border-radius: 10px; padding: 11px 13px; display: flex; flex-direction: column; gap: 7px;">
+            <div style="font-size: 12px; color: var(--mut);">先查判例：属于下面任一情况，就是已经允许过的，无需判定。</div>
+            <sc-for list="{{ judgeCases }}" as="jc" hint-placeholder-count="2">
+              <div style="display: flex; gap: 8px; align-items: baseline; font-size: 12.5px;">
+                <span style="color: var(--ac); font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; background: var(--ac-bg); border-radius: 4px; padding: 0 6px; flex-shrink: 0;">ALLOW</span>
+                <span style="flex: 1; min-width: 0; color: var(--ink2);">{{ jc.text }}</span>
+                <span style="font-size: 11px; color: var(--faint); flex-shrink: 0;">{{ jc.scope }}</span>
+              </div>
+            </sc-for>
+            <button onClick="{{ onJudgeByCase }}" style="align-self: flex-start; margin-top: 2px; padding: 7px 14px; background: var(--card); color: var(--ac); border: 1px solid var(--ac-line); border-radius: 8px; font-size: 12.5px; cursor: pointer; font-family: inherit;" style-hover="background: var(--ac-bg);">{{ judgeByCaseLabel }}</button>
+          </div>
+        </sc-if>
+
+        <input value="{{ violationText }}" onChange="{{ onViolationText }}" placeholder="{{ judgePlaceholder }}" style="width: 100%; margin-top: 14px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; font-family: inherit; outline: none; background: var(--card); color: var(--ink);" style-focus="border-color: var(--ac);">
+        <div style="font-size: 11.5px; color: var(--faint); margin-top: 6px;">写清楚这是什么情况。选「永久允许」的话，这段描述就是以后判断的依据。</div>
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
+          <button onClick="{{ onJudgeBreak }}" style="padding: 13px 16px; background: var(--card); border: 2px solid var(--dg); color: var(--dg); border-radius: 10px; font-size: 14.5px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: left;" style-hover="background: var(--dg-bg);">{{ judgeBreakLabel }}</button>
+          <button onClick="{{ onJudgeAllow }}" style="padding: 13px 16px; background: var(--card); border: 2px solid var(--ac); color: var(--ac); border-radius: 10px; font-size: 14.5px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: left;" style-hover="background: var(--ac-bg);">{{ judgeAllowLabel }}</button>
         </div>
-        <button onClick="{{ onModalCancel }}" style="margin-top: 12px; background: none; border: none; color: var(--faint); font-size: 12.5px; cursor: pointer; font-family: inherit; padding: 0;">返回（暂不判定，继续专注）</button>
+        <div style="font-size: 11.5px; color: var(--faint); margin-top: 10px; line-height: 1.6;">问自己：如果以后每次遇到这种情况都允许，我能接受吗？能，就允许；不能，就是违规。</div>
+        <button onClick="{{ onModalCancel }}" style="margin-top: 10px; background: none; border: none; color: var(--mut); font-size: 12.5px; cursor: pointer; font-family: inherit; padding: 0;" style-hover="color: var(--ink2);">← 返回（其实没有违规，继续专注）</button>
       </div>
     </div>
   </sc-if>
@@ -1052,7 +1298,19 @@
     <div style="position: fixed; inset: 0; z-index: 60; background: rgba(34,31,27,.4); display: flex; align-items: center; justify-content: center; padding: 20px;">
       <div style="width: 440px; max-width: 100%; background: var(--card); border-radius: 16px; padding: 24px 26px; box-shadow: 0 24px 64px rgba(34,31,27,.25);">
         <div style="font-size: 18px; font-weight: 700;">预约超时 · 判定</div>
-        <div style="font-size: 13px; color: var(--mut); margin-top: 6px; line-height: 1.7;">响指打了，但 15 分钟内没有坐上神圣座位。预约链 {{ auxStreakStr }} 面临判决：</div>
+        <div style="font-size: 13px; color: var(--mut); margin-top: 6px; line-height: 1.7;">预约信号做了，但 15 分钟内没有坐上神圣座位。预约链 {{ auxStreakStr }} 面临判决：</div>
+        <sc-if value="{{ auxHasCases }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top: 14px; background: var(--sub); border: 1px solid var(--line2); border-radius: 10px; padding: 11px 13px; display: flex; flex-direction: column; gap: 7px;">
+            <div style="font-size: 12px; color: var(--mut);">先查判例：属于下面任一情况，就是已经允许过的。</div>
+            <sc-for list="{{ auxCases }}" as="jc" hint-placeholder-count="1">
+              <div style="display: flex; gap: 8px; align-items: baseline; font-size: 12.5px;">
+                <span style="color: var(--ac); font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; background: var(--ac-bg); border-radius: 4px; padding: 0 6px; flex-shrink: 0;">ALLOW</span>
+                <span style="flex: 1; min-width: 0; color: var(--ink2);">{{ jc.text }}</span>
+              </div>
+            </sc-for>
+            <button onClick="{{ onAuxByCase }}" style="align-self: flex-start; margin-top: 2px; padding: 7px 14px; background: var(--card); color: var(--ac); border: 1px solid var(--ac-line); border-radius: 8px; font-size: 12.5px; cursor: pointer; font-family: inherit;" style-hover="background: var(--ac-bg);">属于已有判例 → 本次预约作废不罚</button>
+          </div>
+        </sc-if>
         <input value="{{ violationText }}" onChange="{{ onViolationText }}" placeholder="说明情况，如：当时在户外无法开始" style="width: 100%; margin-top: 14px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; font-family: inherit; outline: none;" style-focus="border-color: var(--ac);">
         <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 16px;">
           <button onClick="{{ onAuxBreak }}" style="padding: 13px 16px; background: var(--card); border: 2px solid var(--dg); color: var(--dg); border-radius: 10px; font-size: 14.5px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: left;" style-hover="background: var(--dg-bg);">预约链断裂 —— 清零，从 #1 重新积累</button>
@@ -1088,6 +1346,11 @@
                   <span style="font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 16px; width: 34px; text-align: center;">{{ c.streakStr }}</span>
                   <button onClick="{{ c.onInc }}" style="width: 26px; height: 26px; border: 1px solid var(--line); background: var(--card); border-radius: 7px; cursor: pointer; font-size: 15px; color: var(--ink2); font-family: inherit;" style-hover="border-color: var(--faint2);">+</button>
                 </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--mut);">
+                <span>完成条件：每个节点专注满</span>
+                <input value="{{ c.mins }}" onChange="{{ c.onMins }}" inputmode="numeric" style="width: 52px; padding: 5px 6px; border: 1px solid var(--line); border-radius: 6px; font-size: 12.5px; font-family: 'IBM Plex Mono', monospace; outline: none; text-align: center; background: var(--card); color: var(--ink);" style-focus="border-color: var(--ac);">
+                <span>分钟</span>
               </div>
             </div>
           </sc-for>
@@ -1141,6 +1404,37 @@
     </div>
   </sc-if>
 
+  <!-- ================= 移动端「更多」面板 ================= -->
+  <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; inset: 0; z-index: 55; display: flex; flex-direction: column; justify-content: flex-end;">
+      <div style="flex: 1; background: var(--scrim);" onClick="{{ onCloseMore }}"></div>
+      <div style="background: var(--card); border-radius: 16px 16px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center;">
+          <div style="font-size: 15px; font-weight: 700;">更多</div>
+          <button onClick="{{ onCloseMore }}" style="margin-left: auto; background: none; border: none; font-size: 20px; color: var(--mut); cursor: pointer; font-family: inherit;">×</button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+          <sc-for list="{{ moreItems }}" as="m" hint-placeholder-count="6">
+            <div onClick="{{ m.onClick }}" style="{{ m.style }}">
+              <span style="font-size: 17px;">{{ m.icon }}</span>
+              <span style="font-size: 12.5px;">{{ m.label }}</span>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--faint); min-height: 12px;">{{ m.badge }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button onClick="{{ onMoreOrg }}" style="flex: 1; padding: 10px; background: var(--sub); border: 1px solid var(--line); border-radius: 9px; font-size: 13px; cursor: pointer; font-family: 'IBM Plex Mono', monospace; color: var(--ink);">⌘ org 源码</button>
+          <button onClick="{{ onToggleTheme }}" style="flex: 1; padding: 10px; background: var(--sub); border: 1px solid var(--line); border-radius: 9px; font-size: 13px; cursor: pointer; font-family: inherit; color: var(--ink);">{{ themeIcon }} 切换深浅色</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ================= 操作反馈 toast ================= -->
+  <sc-if value="{{ toastShow }}" hint-placeholder-val="{{ false }}">
+    <div class="ctrl-toast" onClick="{{ onToastClose }}" style="{{ toastStyle }}">{{ toastMsg }}</div>
+  </sc-if>
+
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script>
@@ -1152,13 +1446,13 @@ class Component extends DCLogic {
       view: 'chain',
       now: Date.now(),
       chains: [
-        { id: 'a', name: '精锐链', elite: true, streak: 12, best: 12, created: '2026-05-28', desc: '仅最佳状态可触发' },
-        { id: 'b', name: '普通链 B', elite: false, streak: 5, best: 7, created: '2026-06-03', desc: '任意状态可执行 · 储君' },
-        { id: 'c', name: '普通链 C', elite: false, streak: 2, best: 4, created: '2026-06-08', desc: '疲惫 / 碎片时间用' }
+        { id: 'a', name: '精锐链', elite: true, streak: 12, best: 12, created: '2026-05-28', desc: '仅最佳状态可触发', mins: 60 },
+        { id: 'b', name: '普通链 B', elite: false, streak: 5, best: 7, created: '2026-06-03', desc: '任意状态可执行 · 储君', mins: 45 },
+        { id: 'c', name: '普通链 C', elite: false, streak: 2, best: 4, created: '2026-06-08', desc: '疲惫 / 碎片时间用', mins: 25 }
       ],
       activeChainId: 'a',
       aux: { streak: 41, active: false, endsAt: 0 },
-      session: { active: false, startedAt: 0, taskId: null, chainId: null },
+      session: { active: false, startedAt: 0, taskKey: null, taskTitle: '', chainId: null },
       tasks: [
         { id: 1, kw: 'NEXT', prio: 'A', title: '论文第三章·图表绘制', tags: ':突击:', time: '14:00', sched: '<2026-06-11 Thu 14:00>', dl: '' },
         { id: 2, kw: 'TODO', prio: 'A', title: '第三章修订', tags: ':突击:', time: '', sched: '', dl: '<2026-06-15 Mon>' },
@@ -1196,6 +1490,7 @@ class Component extends DCLogic {
         { text: '接快递电话（≤3 分钟）', scope: '精锐链', date: '2026-06-07' }
       ],
       log: this.seedLog(),
+      logDate: this.todayIso(),
       todayMins: 182,
       todayNodes: 2,
       totalNodes: 47,
@@ -1237,8 +1532,9 @@ class Component extends DCLogic {
       ],
       lastRuleAddDate: '',
       selRule: null,
-      ruleDraft: { title: '', note: '', parent: '' },
+      ruleDraft: { title: '', note: '', parent: '', stale: '', node: '' },
       ruleViolatePending: null,
+      ruleBumpDate: '',
 
       // 回收站 — 软删除（org :ARCHIVE:），可恢复 / 永久删除
       trash: [],
@@ -1268,8 +1564,12 @@ class Component extends DCLogic {
       rStale: '', rNode: '', rAction: '',
       seatPick: null, seatCapture: '',
       seatMarker: '坐上书桌前那把椅子', auxSignal: '打一个响指',
-      welcomeSeen: false,
       chainEditMsg: '', chainDelPending: null,
+      // 引导：分步设置向导 + 上手清单 + 各页说明
+      guideStep: 0, guideMins: 60,
+      onboard: { done: {}, tips: {}, checklistHidden: false },
+      tipOpen: null, ritualEdit: false, moreOpen: false,
+      judgeKind: 'distract', toast: null,
       s3: { endpoint: '', region: 'auto', bucket: '', ak: '', sk: '', prefix: 'control/' },
       s3Msg: '',
       lastBackup: '',
@@ -1307,7 +1607,7 @@ class Component extends DCLogic {
       const raw = localStorage.getItem('control-app-v1');
       if (raw) {
         const saved = JSON.parse(raw);
-        const st = Object.assign({}, this.defaults(), saved, { now: Date.now(), view: 'chain', modal: saved.modal === 'aux' ? 'aux' : null, importMsg: '', s3Msg: '', localFileMsg: '', localFileState: 'none' });
+        const st = Object.assign({}, this.defaults(), saved, { now: Date.now(), view: 'chain', modal: saved.modal === 'aux' ? 'aux' : null, importMsg: '', s3Msg: '', localFileMsg: '', localFileState: 'none', toast: null, moreOpen: false, tipOpen: null, ritualEdit: false });
         // migrate legacy 定式(routines) → 国策树(rules) if user had old data without rules
         if (saved.routines && !saved.rules) {
           st.rules = saved.routines.map((r, i) => ({ id: 'k' + i, level: 1, title: r.action, note: '回溯点：' + (r.node || '—') + '（原稳态：' + (r.stale || '—') + '）', streak: r.streak || 0, created: '2026-06-01' }));
@@ -1325,6 +1625,14 @@ class Component extends DCLogic {
         if (!st.notify) st.notify = { enabled: false, err: '' };
         if (!st.seatMarker) st.seatMarker = '坐上书桌前那把椅子';
         if (!st.auxSignal) st.auxSignal = '打一个响指';
+        if (!st.onboard) st.onboard = { done: {}, tips: {}, checklistHidden: false };
+        if (!st.onboard.done) st.onboard.done = {};
+        if (!st.onboard.tips) st.onboard.tips = {};
+        if (!st.ruleDraft) st.ruleDraft = { title: '', note: '', parent: '', stale: '', node: '' };
+        if (!st.logDate) st.logDate = this.todayIso();
+        Object.assign(st, this.rollDay(st) || {});
+        // 旧存档的会话：taskId → taskKey
+        if (st.session && st.session.taskKey === undefined) st.session = Object.assign({}, st.session, { taskKey: st.session.taskId != null ? 't' + st.session.taskId : null, taskTitle: '' });
         // theme from pre-paint bootstrap (html[data-theme])
         try { st.theme = document.documentElement.getAttribute('data-theme') || 'light'; } catch (e) { st.theme = 'light'; }
         // repair corrupted chain data (leftover from earlier automated testing: all "新链" @ 0)
@@ -1335,6 +1643,7 @@ class Component extends DCLogic {
           if (!st.clockLog || !st.clockLog.length) st.clockLog = this.defaults().clockLog;
         }
         if (!st.chains.some(c => c.elite)) st.chains[0].elite = true;
+        st.chains = st.chains.map(c => c.mins ? c : Object.assign({}, c, { mins: c.elite ? 60 : 45 }));
         return st;
       }
     } catch (e) { /* ignore */ }
@@ -1361,11 +1670,21 @@ class Component extends DCLogic {
           if (rem <= 0 && this._stepKey !== key) { this._stepKey = key; this.notify('「' + it.title + '」时间到', '可以「完成本步」进入下一步了。'); }
         }
       }
-      if (s.aux.active && now > s.aux.endsAt && !s.modal) {
-        this.setState({ now, modal: 'aux' });
-      } else {
-        this.setState({ now });
+      const patch = { now };
+      // sacred seat: completion condition reached (fire once per session)
+      if (s.session && s.session.active) {
+        const sc = s.chains.find(c => c.id === s.session.chainId) || this.activeChain();
+        if (now - s.session.startedAt >= (sc.mins || 60) * 60000 && this._tgtKey !== s.session.startedAt) {
+          this._tgtKey = s.session.startedAt;
+          this.notify('节点 #' + (sc.streak + 1) + ' 已满 ' + (sc.mins || 60) + ' 分钟', '完成条件达成，回到 Control 点「完成节点」。');
+          patch.toast = { msg: '完成条件达成 —— 可以点「完成节点」了', kind: 'ok', at: now };
+        }
       }
+      if (s.toast && now - s.toast.at > 3800 && !patch.toast) patch.toast = null;
+      // day rollover while the app stays open
+      if (s.logDate !== this.todayIso()) Object.assign(patch, this.rollDay(s) || {});
+      if (s.aux.active && now > s.aux.endsAt && !s.modal) patch.modal = 'aux';
+      this.setState(patch);
     }, 1000);
     this.initLocalFile();
     // register service worker (PWA / offline)
@@ -1388,19 +1707,19 @@ class Component extends DCLogic {
   initBlank() {
     const id = 'c' + Date.now();
     this.setState({
-      chains: [{ id, name: '主链', elite: true, streak: 0, best: 0, created: this.todayIso(), desc: '你的第一条任务链' }],
+      chains: [{ id, name: '主链', elite: true, streak: 0, best: 0, created: this.todayIso(), desc: '你的第一条任务链', mins: this.state.guideMins || 60 }],
       activeChainId: id,
       aux: { streak: 0, active: false, endsAt: 0 },
-      session: { active: false, startedAt: 0, taskId: null, chainId: null },
+      session: { active: false, startedAt: 0, taskKey: null, taskTitle: '', chainId: null },
       tasks: [], nextTaskId: 1,
       projects: [], collapsed: [], selProj: null, projDelPending: null,
       cases: [],
       clockLog: [],
-      log: new Array(70).fill(0),
+      log: new Array(70).fill(0), logDate: this.todayIso(),
       todayMins: 0, todayNodes: 0, totalNodes: 0,
       groups: [], groupRun: { active: false, groupId: null, idx: 0, cycle: 0, itemStartedAt: 0, paused: false, pausedAt: 0 },
       habits: [],
-      rules: [], lastRuleAddDate: '', selRule: null, ruleDraft: { title: '', note: '', parent: '' }, ruleViolatePending: null,
+      rules: [], lastRuleAddDate: '', ruleBumpDate: '', selRule: null, ruleViolatePending: null,
       trash: [],
       points: 0, bets: [], betDraft: { desc: '', stake: 20 },
       seatPick: null, seatCapture: '',
@@ -1415,6 +1734,7 @@ class Component extends DCLogic {
     let perm = Notification.permission;
     if (perm === 'default') { try { perm = await Notification.requestPermission(); } catch (e) { /* ignore */ } }
     this.setState({ notify: { enabled: perm === 'granted', err: perm === 'denied' ? '通知权限被拒绝，请在浏览器站点设置中开启' : '' } });
+    if (perm === 'granted') { this.markDone('notify'); this.toastMsg('本地提醒已开启'); }
   }
   disableNotify() { this.setState({ notify: { enabled: false, err: '' } }); }
   notify(title, body) {
@@ -1454,24 +1774,111 @@ class Component extends DCLogic {
   activeChain() { return this.state.chains.find(c => c.id === this.state.activeChainId) || this.state.chains[0] || { id: null, name: '主链', elite: false, streak: 0, best: 0, created: this.todayIso(), desc: '' }; }
   fmtMMSS(sec) { sec = Math.max(0, Math.round(sec)); const m = Math.floor(sec / 60), s = sec % 60; return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0'); }
   fmtHMS(sec) { sec = Math.max(0, Math.round(sec)); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0'); }
-  nextTask() { const t = this.state.tasks; return t.find(x => x.kw === 'NEXT') || t.find(x => x.kw === 'TODO') || null; }
-
+  // 神圣座位候选：今日任务（未完成）+ 项目里标为 NEXT 的条目
+  seatItems() {
+    const s = this.state;
+    const tasks = s.tasks.filter(x => x.kw !== 'DONE' && x.kw !== 'CANCELLED').map(x => ({
+      src: 'task', id: x.id, key: 't' + x.id, title: x.title, kw: x.kw, prio: x.prio, tags: x.tags || '',
+      meta: x.dl ? 'DDL ' + x.dl.replace(/[<>]/g, '') : (x.time || ''), dl: !!x.dl
+    }));
+    const projs = s.projects.filter(x => x.kw === 'NEXT').map(x => ({
+      src: 'proj', id: x.id, key: 'p:' + x.id, title: x.title, kw: x.kw, prio: x.prio, tags: x.tags || '',
+      meta: '项目' + (x.dl ? ' · DDL ' + x.dl : ''), dl: !!x.dl
+    }));
+    return tasks.concat(projs);
+  }
   selectedSeatTask() {
     const s = this.state;
-    if (s.seatPick != null) {
-      const t = s.tasks.find(x => x.id === s.seatPick && x.kw !== 'DONE');
-      if (t) return t;
-    }
-    return this.nextTask();
+    if (s.seatPick === 'free') return null;
+    const items = this.seatItems();
+    if (s.seatPick != null) { const hit = items.find(i => i.key === s.seatPick); if (hit) return hit; }
+    return items.find(i => i.src === 'task' && i.kw === 'NEXT') || items.find(i => i.src === 'task') || items[0] || null;
+  }
+  sessionChain() {
+    const s = this.state;
+    return (s.session && s.session.active && s.chains.find(c => c.id === s.session.chainId)) || this.activeChain();
   }
 
   startSession(viaAux) {
     const task = this.selectedSeatTask();
     const patch = {
-      session: { active: true, startedAt: Date.now(), taskId: task ? task.id : null, chainId: this.state.activeChainId },
-      aux: Object.assign({}, this.state.aux, { active: false, streak: viaAux ? this.state.aux.streak + 1 : this.state.aux.streak })
+      session: { active: true, startedAt: Date.now(), taskKey: task ? task.key : null, taskTitle: task ? task.title : '', chainId: this.state.activeChainId },
+      aux: Object.assign({}, this.state.aux, { active: false, streak: viaAux ? this.state.aux.streak + 1 : this.state.aux.streak }),
+      ritualEdit: false
     };
     this.setState(patch);
+    const c = this.activeChain();
+    this.toastMsg((viaAux ? '按时就位，预约链 +1 · ' : '') + '节点 #' + (c.streak + 1) + ' 开始，满 ' + (c.mins || 60) + ' 分钟即可完成');
+  }
+
+  // 完成节点：写 CLOCK、链 +1、任务标 DONE
+  completeNode() {
+    const s = this.state, sess = s.session;
+    if (!sess || !sess.active) return;
+    const chain = this.sessionChain();
+    const mins = Math.max(1, Math.round((Date.now() - sess.startedAt) / 60000));
+    const item = this.seatItems().find(i => i.key === sess.taskKey) || null;
+    const chains = s.chains.map(c => c.id !== chain.id ? c : Object.assign({}, c, { streak: c.streak + 1, best: Math.max(c.best, c.streak + 1) }));
+    const tasks = item && item.src === 'task' ? s.tasks.map(t => t.id === item.id ? Object.assign({}, t, { kw: 'DONE' }) : t) : s.tasks;
+    const projects = item && item.src === 'proj' ? s.projects.map(p => p.id === item.id ? Object.assign({}, p, { kw: 'DONE' }) : p) : s.projects;
+    const log = s.log.slice();
+    log[log.length - 1] = (log[log.length - 1] || 0) + mins;
+    const clockLog = s.clockLog.concat([{
+      title: item ? item.title : (sess.taskTitle || '自由专注'), chain: chain.name, node: chain.streak + 1,
+      start: this.stampPlus(mins), end: this.nowStamp(), mins, tags: item ? item.tags : ''
+    }]);
+    this.setState({
+      chains, tasks, projects, log, clockLog,
+      todayMins: s.todayMins + mins, todayNodes: s.todayNodes + 1, totalNodes: s.totalNodes + 1,
+      points: s.points + 3, seatPick: null,
+      session: { active: false, startedAt: 0, taskKey: null, taskTitle: '', chainId: null }
+    });
+    this.markDone('node');
+    this.toastMsg('节点 #' + (chain.streak + 1) + ' 完成 · ' + chain.name + ' 连胜 #' + (chain.streak + 1) + ' · 积分 +3');
+  }
+
+  taskDelete(id) {
+    const t = this.state.tasks.find(x => x.id === id); if (!t) return;
+    this.toTrash('task', t.title, { task: t });
+    this.setState(s => ({ tasks: s.tasks.filter(x => x.id !== id), seatPick: s.seatPick === 't' + id ? null : s.seatPick }));
+    this.toastMsg('已移入回收站：' + t.title);
+  }
+
+  // ---------- 反馈 & 引导 ----------
+  toastMsg(msg, kind) { this.setState({ toast: { msg, kind: kind || 'ok', at: Date.now() } }); }
+  markDone(key) {
+    this.setState(s => {
+      const ob = s.onboard || { done: {}, tips: {} };
+      if (ob.done && ob.done[key]) return {};
+      return { onboard: Object.assign({}, ob, { done: Object.assign({}, ob.done, { [key]: true }) }) };
+    });
+  }
+  rollDay(st) {
+    const today = this.todayIso();
+    if (!st.logDate || st.logDate === today) return null;
+    const days = Math.round((new Date(today + 'T00:00:00') - new Date(st.logDate + 'T00:00:00')) / 86400000);
+    if (!(days > 0)) return { logDate: today };
+    const n = Math.min(days, 70);
+    return { log: (st.log || []).slice(n).concat(new Array(n).fill(0)), todayMins: 0, todayNodes: 0, logDate: today };
+  }
+  finishGuide(fresh) {
+    const mins = this.state.guideMins || 60;
+    const hadRule = !!((this.state.ruleDraft || {}).title || '').trim() && this.state.lastRuleAddDate !== this.todayIso();
+    if (fresh) this.initBlank();
+    this.setState(st => {
+      const patch = { welcomeSeen: true, guideStep: 0, view: 'chain', chains: st.chains.map(c => c.elite ? Object.assign({}, c, { mins }) : c) };
+      const d = st.ruleDraft || {};
+      const title = (d.title || '').trim();
+      if (title && st.lastRuleAddDate !== this.todayIso()) {
+        patch.rules = st.rules.concat([{ id: 'k' + Date.now(), level: 1, title, stale: (d.stale || '').trim(), node: (d.node || '').trim(), note: d.node ? '回溯点：' + d.node.trim() : '', streak: 0, created: this.todayIso() }]);
+        patch.lastRuleAddDate = this.todayIso();
+        patch.ruleDraft = { title: '', note: '', parent: '', stale: '', node: '' };
+      }
+      return patch;
+    });
+    this.markDone('ritual');
+    if (hadRule) this.markDone('rule');
+    this.toastMsg(fresh ? '已清空示例 —— 从你的第一条链开始' : '设置已保存，示例数据保留');
   }
 
   buildOrg() {
@@ -1486,6 +1893,7 @@ class Component extends DCLogic {
       L.push(':TYPE:    ' + (c.elite ? 'elite' : 'normal'));
       L.push(':STREAK:  ' + c.streak);
       L.push(':BEST:    ' + c.best);
+      L.push(':TARGET:  ' + (c.mins || 60) + 'min');
       L.push(':CREATED: [' + c.created + ']');
       L.push(':END:');
       // LOGBOOK with CLOCK entries for this chain (org-mode real drawer)
@@ -1562,13 +1970,16 @@ class Component extends DCLogic {
     L.push(':PROPERTIES:', ':DESC: RSIP 层级规则树 · 每日限新增一条 · 违规级联回滚', ':END:');
     s.rules.forEach(r => {
       L.push('*'.repeat(r.level + 1) + ' ACTIVE ' + r.title + ' :国策:');
-      L.push(':PROPERTIES:', ':STREAK:  ' + r.streak, ':CREATED: [' + r.created + ']', ':END:');
+      L.push(':PROPERTIES:', ':STREAK:  ' + r.streak, ':CREATED: [' + r.created + ']');
+      if (r.stale) L.push(':STALE:   ' + r.stale);
+      if (r.node) L.push(':NODE:    ' + r.node);
+      L.push(':END:');
       if (r.note) L.push('  ' + r.note);
     });
 
     L.push('');
     L.push('* 判例');
-    s.cases.forEach(c => L.push('** ALLOW ' + c.text + '  :' + c.scope + ':' + '\n[' + c.date + ']'));
+    s.cases.forEach(c => L.push('** ALLOW ' + c.text + '  :' + c.scope + ':' + (c.kind === 'early' ? '提前结束:' : '') + '\n[' + c.date + ']'));
     if (!s.cases.length) L.push('（暂无）');
 
     L.push('');
@@ -1598,35 +2009,48 @@ class Component extends DCLogic {
     const now = s.now || Date.now();
     const INK = 'var(--ink)', MUT = 'var(--mut)', LINE = 'var(--line)', AC = 'var(--ac)', DG = 'var(--dg)';
     const chain = this.activeChain();
-    const task = this.nextTask();
     const set = p => this.setState(p);
+    const ob = s.onboard || { done: {}, tips: {} };
 
     // nav
+    // 分三组：每日执行 / 规则体系 / 记录与设置；移动端底栏只放 primary，其余收进「更多」
+    const openTasks = s.tasks.filter(t => t.kw !== 'DONE' && t.kw !== 'CANCELLED').length;
     const navDefs = [
-      { id: 'chain', label: '任务链', icon: '链', badge: '#' + chain.streak },
-      { id: 'agenda', label: '今日', icon: '今', badge: String(s.tasks.filter(t => t.kw !== 'DONE').length) },
+      { id: 'chain', label: '任务链', icon: '链', badge: '#' + chain.streak, primary: true },
+      { id: 'agenda', label: '今日', icon: '今', badge: openTasks ? String(openTasks) : '', primary: true },
       { id: 'projects', label: '项目', icon: '项', badge: '' },
-      { id: 'groups', label: '任务组', icon: '组', badge: String(s.groups.length) },
-      { id: 'habits', label: '习惯', icon: '习', badge: String(s.habits.length) },
-      { id: 'rules', label: '国策', icon: '策', badge: String(s.rules.length) },
-      { id: 'stats', label: '统计', icon: '统', badge: '' },
-      { id: 'cases', label: '判例', icon: '判', badge: String(s.cases.length) },
+      { id: 'groups', label: '任务组', icon: '组', badge: s.groups.length ? String(s.groups.length) : '' },
+      { id: 'habits', label: '习惯', icon: '习', badge: s.habits.length ? String(s.habits.length) : '', primary: true },
+      { id: 'rules', label: '国策', icon: '策', badge: s.rules.length ? String(s.rules.length) : '', primary: true, groupStart: true },
+      { id: 'cases', label: '判例', icon: '判', badge: s.cases.length ? String(s.cases.length) : '' },
+      { id: 'stats', label: '统计', icon: '统', badge: '', groupStart: true },
       { id: 'trash', label: '回收站', icon: '收', badge: s.trash.length ? String(s.trash.length) : '' },
       { id: 'storage', label: '设置', icon: '设', badge: s.lastBackup ? '✓' : '' }
     ];
-    const navItems = navDefs.map(n => ({
-      label: n.label,
-      icon: n.icon,
-      badge: n.badge,
-      itemClass: 'nav-item' + (n.badge ? ' has-badge' : ''),
-      badgeStyle: { marginLeft: 'auto', fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', color: s.view === n.id ? AC : 'var(--faint)' },
-      onClick: () => set({ view: n.id }),
-      style: {
-        display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', borderRadius: '8px', cursor: 'pointer',
-        fontSize: '14px', fontWeight: s.view === n.id ? 700 : 400,
-        background: s.view === n.id ? 'var(--line2)' : 'transparent',
-        color: s.view === n.id ? INK : 'var(--ink2)'
-      }
+    const secondaryIds = navDefs.filter(n => !n.primary).map(n => n.id);
+    const moreActive = secondaryIds.indexOf(s.view) >= 0;
+    const navItems = navDefs.concat([{ id: 'more', label: '更多', icon: '⋯', badge: '', more: true }]).map(n => {
+      const on = n.more ? moreActive : s.view === n.id;
+      return {
+        label: n.label,
+        icon: n.icon,
+        badge: n.badge,
+        itemClass: 'nav-item' + (n.badge ? ' has-badge' : '') + (n.more ? ' nav-more' : (n.primary ? '' : ' nav-secondary')),
+        badgeStyle: { marginLeft: 'auto', fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', color: on ? AC : 'var(--faint)' },
+        onClick: n.more ? () => set({ moreOpen: true }) : () => set({ view: n.id, moreOpen: false, tipOpen: null }),
+        style: {
+          display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', borderRadius: '8px', cursor: 'pointer',
+          fontSize: '14px', fontWeight: on ? 700 : 400,
+          background: on ? 'var(--line2)' : 'transparent',
+          color: on ? INK : 'var(--ink2)',
+          marginTop: n.groupStart ? '12px' : '0'
+        }
+      };
+    });
+    const moreItems = navDefs.filter(n => !n.primary).map(n => ({
+      label: n.label, icon: n.icon, badge: n.badge,
+      onClick: () => set({ view: n.id, moreOpen: false, tipOpen: null }),
+      style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '12px 6px 8px', borderRadius: '11px', cursor: 'pointer', border: '1px solid ' + (s.view === n.id ? 'var(--ac-line)' : 'var(--line)'), background: s.view === n.id ? 'var(--ac-bg)' : 'var(--sub)', color: s.view === n.id ? AC : INK }
     }));
     const titles = { chain: '任务链', agenda: '今日 Agenda', projects: '项目大纲', groups: '任务组 · 嵌套链', habits: '习惯 · 连续性', rules: '国策 · RSIP 规则树', stats: '统计', cases: '判例库', trash: '回收站', storage: '设置' };
 
@@ -1642,7 +2066,12 @@ class Component extends DCLogic {
     // session
     const sess = s.session;
     const sessElapsed = sess.active ? (now - sess.startedAt) / 1000 : 0;
-    const sessTask = sess.active ? (s.tasks.find(t => t.id === sess.taskId) || task) : null;
+    const sChain = this.sessionChain();
+    const sessItem = sess.active ? (this.seatItems().find(i => i.key === sess.taskKey) || null) : null;
+    const sessTask = sess.active ? (sessItem || (sess.taskTitle ? { title: sess.taskTitle, prio: '', tags: '' } : null)) : null;
+    const sMins = sChain.mins || 60;
+    const sessReached = sess.active && sessElapsed >= sMins * 60;
+    const sessTargetFrac = Math.max(0, Math.min(1, sessElapsed / (sMins * 60)));
     const pomoLen = 25 * 60;
     const pomoElapsed = sessElapsed % pomoLen;
     const pomoIdx = Math.floor(sessElapsed / pomoLen) + 1;
@@ -1653,7 +2082,7 @@ class Component extends DCLogic {
     };
     const sessOrg = sessTask
       ? '* NEXT' + (sessTask.prio ? ' [#' + sessTask.prio + ']' : '') + ' ' + sessTask.title + ' ' + sessTask.tags +
-        '\n:PROPERTIES:\n:CHAIN: ' + chain.name + '\n:NODE:  ' + (chain.streak + 1) + '\n:END:\nCLOCK: [运行中 ' + this.fmtHMS(sessElapsed) + ']'
+        '\n:PROPERTIES:\n:CHAIN: ' + sChain.name + '\n:NODE:  ' + (sChain.streak + 1) + '\n:END:\nCLOCK: [运行中 ' + this.fmtHMS(sessElapsed) + ']'
       : '';
 
     // hero dots
@@ -1681,7 +2110,7 @@ class Component extends DCLogic {
         badgeStyle: { fontSize: '11px', color: c.elite ? AC : MUT, background: c.elite ? 'var(--ac-bg)' : 'var(--line2)', borderRadius: '5px', padding: '1px 7px', whiteSpace: 'nowrap', flexShrink: 0, display: (c.elite || isHeir) ? 'inline' : 'none' },
         streakStr: '#' + c.streak,
         desc: c.desc,
-        onClick: () => set({ activeChainId: c.id }),
+        onClick: () => { if (sess.active) { if (c.id !== sess.chainId) this.toastMsg('专注进行中，结束本节点后再切换链', 'warn'); return; } set({ activeChainId: c.id }); },
         onEdit: (e) => { if (e && e.stopPropagation) e.stopPropagation(); set({ modal: 'chains' }); },
         style: {
           background: 'var(--card)', borderRadius: '12px', padding: '14px 16px', cursor: 'pointer',
@@ -1702,7 +2131,7 @@ class Component extends DCLogic {
       if (wasElite) { const heir = rest.slice().sort((a, b) => b.streak - a.streak)[0]; heir.elite = true; }
       const patch = { chains: rest, chainEditMsg: '', chainDelPending: null };
       if (s.activeChainId === id) patch.activeChainId = (rest.find(c => c.elite) || rest[0]).id;
-      if (s.session && s.session.active && s.session.chainId === id) patch.session = { active: false, startedAt: 0, taskId: null, chainId: null };
+      if (s.session && s.session.active && s.session.chainId === id) patch.session = { active: false, startedAt: 0, taskKey: null, taskTitle: '', chainId: null };
       set(patch);
     };
     const requestDelete = id => {
@@ -1715,7 +2144,7 @@ class Component extends DCLogic {
     const delPendingChain = s.chains.find(c => c.id === s.chainDelPending) || null;
     const addChain = () => {
       const id = 'c' + Date.now();
-      set({ chains: s.chains.concat([{ id, name: '新链', elite: false, streak: 0, best: 0, created: this.orgDate().slice(0, 10), desc: '点此编辑用途' }]), chainEditMsg: '已新增，可重命名' });
+      set({ chains: s.chains.concat([{ id, name: '新链', elite: false, streak: 0, best: 0, created: this.orgDate().slice(0, 10), desc: '点此编辑用途', mins: 30 }]), chainEditMsg: '已新增，可重命名' });
     };
     const chainEditRows = s.chains.map(c => ({
       name: c.name,
@@ -1729,7 +2158,9 @@ class Component extends DCLogic {
       onSetElite: () => setElite(c.id),
       onDelete: () => requestDelete(c.id),
       onInc: () => bumpStreak(c.id, 1),
-      onDec: () => bumpStreak(c.id, -1)
+      onDec: () => bumpStreak(c.id, -1),
+      mins: String(c.mins || 60),
+      onMins: e => { const v = parseInt(e.target.value, 10); if (v > 0 && v <= 600) patchChain(c.id, { mins: v }); }
     }));
 
     // agenda rows
@@ -1741,7 +2172,7 @@ class Component extends DCLogic {
         kw: t.kw + (t.prio ? ' [#' + t.prio + ']' : ''),
         kwStyle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', color: kc.c, background: kc.bg, borderRadius: '5px', padding: '2px 8px', flexShrink: 0 },
         title: t.title,
-        titleStyle: { fontSize: '14px', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: done ? 'line-through' : 'none', color: done ? 'var(--faint)' : INK },
+        titleStyle: { fontSize: '14px', flex: '1 1 160px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: done ? 'line-through' : 'none', color: done ? 'var(--faint)' : INK },
         tags: t.tags,
         meta: t.dl ? 'DEADLINE ' + t.dl : (t.sched ? 'SCHEDULED ' + t.sched : ''),
         metaStyle: { marginLeft: 'auto', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10.5px', color: t.dl ? DG : 'var(--faint)', flexShrink: 0, whiteSpace: 'nowrap' },
@@ -1751,7 +2182,10 @@ class Component extends DCLogic {
           const tasks = s.tasks.map(x => x.id === t.id ? Object.assign({}, x, { kw: x.kw === 'DONE' ? 'TODO' : 'DONE' }) : x);
           set({ tasks });
         },
-        rowStyle: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 18px', borderBottom: '1px solid var(--line2)' }
+        canSeat: !done && !sess.active,
+        onSeat: () => { set({ seatPick: 't' + t.id, view: 'chain' }); this.toastMsg('已放上神圣座位：' + t.title); },
+        onDelete: () => this.taskDelete(t.id),
+        rowStyle: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 12px', padding: '12px 18px', borderBottom: '1px solid var(--line2)' }
       };
     });
 
@@ -1880,8 +2314,16 @@ class Component extends DCLogic {
       style: { width: '14px', height: '14px', borderRadius: '3px', background: shades[v <= 10 ? 0 : v < 90 ? 1 : v < 180 ? 2 : 3] }
     }));
     const weekMins = last7.reduce((a, b) => a + b, 0);
-    const tagData = [['突击', 540], ['侦查', 150], ['指挥', 80], ['工程', 110], ['炊事', 45]];
-    const tagMax = 540;
+    // 兵种分布：近 7 天 CLOCK 记录按标签汇总
+    const since7 = (function () { const d = new Date(); d.setDate(d.getDate() - 6); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+    const tagSum = {};
+    (s.clockLog || []).forEach(e => {
+      const day = String(e.end || '').slice(1, 11);
+      if (day < since7 || !e.tags) return;
+      String(e.tags).split(':').filter(Boolean).forEach(tg => { tagSum[tg] = (tagSum[tg] || 0) + (e.mins || 0); });
+    });
+    const tagData = Object.keys(tagSum).map(k => [k, tagSum[k]]).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const tagMax = Math.max.apply(null, tagData.map(d => d[1]).concat([1]));
     const tagBars = tagData.map(d => ({
       label: d[0],
       val: (d[1] / 60).toFixed(1) + 'h',
@@ -1889,59 +2331,47 @@ class Component extends DCLogic {
     }));
 
     // cases
-    const caseRows = s.cases.map(c => ({ text: c.text, scope: ':' + c.scope + ':', date: '[' + c.date + ']' }));
+    const caseRows = s.cases.map(c => ({ text: c.text, scope: ':' + c.scope + ':' + (c.kind === 'early' ? '提前结束:' : ''), date: '[' + c.date + ']' }));
 
-    // judging actions
+    // judging actions（下必为例）
+    const stopSess = { active: false, startedAt: 0, taskKey: null, taskTitle: '', chainId: null };
+    const isEarly = s.judgeKind === 'early';
     const judgeBreak = () => {
-      const text = s.violationText.trim();
       const chains = s.chains.map(c => Object.assign({}, c));
-      const me = chains.find(c => c.id === s.activeChainId);
+      const me = chains.find(c => c.id === sChain.id) || chains[0];
+      const lost = me.streak;
       const wasElite = me.elite;
       me.streak = 0;
+      const patch = { chains, session: stopSess, modal: null, violationText: '' };
+      let msg = me.name + ' #' + lost + ' 断裂，清零';
       if (wasElite) {
-        me.elite = false;
         const heir = chains.filter(c => c.id !== me.id).sort((a, b) => b.streak - a.streak)[0];
-        if (heir) heir.elite = true;
-        const newElite = chains.find(c => c.elite) || me;
-        set({ chains, activeChainId: newElite.id, session: { active: false, startedAt: 0, taskId: null, chainId: null }, modal: null, violationText: '' });
-      } else {
-        set({ chains, session: { active: false, startedAt: 0, taskId: null, chainId: null }, modal: null, violationText: '' });
+        if (heir) { me.elite = false; heir.elite = true; patch.activeChainId = heir.id; msg += ' · 储君「' + heir.name + '」继位'; }
       }
+      set(patch);
+      this.toastMsg(msg + '。下一次从 #1 开始。', 'bad');
     };
     const judgeAllow = () => {
-      const text = s.violationText.trim() || '（未描述的行为）';
-      const cases = s.cases.concat([{ text, scope: chain.name, date: this.orgDate() }]);
+      const text = s.violationText.trim() || (isEarly ? '（未描述的提前结束）' : '（未描述的行为）');
+      const cases = s.cases.concat([{ text, scope: sChain.name, date: this.orgDate(), kind: isEarly ? 'early' : 'distract' }]);
       set({ cases, modal: null, violationText: '' });
+      if (isEarly) this.completeNode();
+      else this.toastMsg('已写入判例库：' + text + ' —— 以后同类情况一律放行');
     };
-    const auxBreak = () => set({ aux: { streak: 0, active: false, endsAt: 0 }, modal: null, violationText: '' });
+    const judgeByCase = () => {
+      set({ modal: null, violationText: '' });
+      if (isEarly) this.completeNode();
+      else this.toastMsg('依已有判例放行，继续专注');
+    };
+    // 提前结束只看「提前结束」类判例；走神 / 中断只看其余判例
+    const judgeCases = s.cases.filter(c => (c.scope === sChain.name || !c.scope) && ((c.kind === 'early') === isEarly)).slice(-6).reverse()
+      .map(c => ({ text: c.text, scope: ':' + c.scope + ':' }));
+    const auxCases = s.cases.filter(c => c.scope === '预约链').slice(-6).reverse().map(c => ({ text: c.text }));
+    const auxBreak = () => { set({ aux: { streak: 0, active: false, endsAt: 0 }, modal: null, violationText: '' }); this.toastMsg('预约链断裂，清零', 'bad'); };
     const auxAllow = () => {
       const text = s.violationText.trim() || '（未描述的情况）';
       set({ cases: s.cases.concat([{ text, scope: '预约链', date: this.orgDate() }]), aux: Object.assign({}, s.aux, { active: false, endsAt: 0 }), modal: null, violationText: '' });
-    };
-
-    // complete node
-    const completeNode = () => {
-      const mins = Math.max(1, Math.round(sessElapsed / 60));
-      const chains = s.chains.map(c => {
-        if (c.id !== sess.chainId) return c;
-        const streak = c.streak + 1;
-        return Object.assign({}, c, { streak, best: Math.max(c.best, streak) });
-      });
-      const tasks = sessTask ? s.tasks.map(t => t.id === sessTask.id ? Object.assign({}, t, { kw: 'DONE' }) : t) : s.tasks;
-      const log = s.log.slice();
-      log[log.length - 1] = (log[log.length - 1] || 0) + mins;
-      const clockLog = s.clockLog.concat([{
-        title: sessTask ? sessTask.title : '专注', chain: chain.name, node: chain.streak + 1,
-        start: this.stampPlus(mins), end: this.nowStamp(), mins
-      }]);
-      set({
-        chains, tasks, log, clockLog,
-        todayMins: s.todayMins + mins,
-        todayNodes: s.todayNodes + 1,
-        totalNodes: s.totalNodes + 1,
-        points: s.points + 3,
-        session: { active: false, startedAt: 0, taskId: null, chainId: null }
-      });
+      this.toastMsg('已写入判例库，本次预约作废不罚');
     };
 
     // capture
@@ -1951,35 +2381,39 @@ class Component extends DCLogic {
       const m = v.match(/^(.*?)\s*(:(?:[^:\s]+:)+)?$/);
       const t = { id: s.nextTaskId, kw: 'TODO', prio: '', title: (m && m[1] ? m[1] : v).trim(), tags: (m && m[2]) || '', time: '', sched: '', dl: '' };
       set({ tasks: s.tasks.concat([t]), nextTaskId: s.nextTaskId + 1, captureValue: '' });
+      this.markDone('capture');
     };
 
-    // seat: pick from today's TODO/NEXT + inline capture
+    // seat: pick from today's TODO/NEXT + project NEXT, or 自由专注 + inline capture
     const seatSel = this.selectedSeatTask();
-    const seatSelId = seatSel ? seatSel.id : null;
-    const seatTasks = s.tasks.filter(t => t.kw !== 'DONE').map(t => {
-      const on = t.id === seatSelId;
-      const kc = kwColors[t.kw] || kwColors.TODO;
+    const seatSelKey = seatSel ? seatSel.key : 'free';
+    const seatRow = (key, kw, kc, title, tags, meta, metaColor) => {
+      const on = key === seatSelKey;
       return {
-        kw: t.kw + (t.prio ? ' [#' + t.prio + ']' : ''),
-        kwStyle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '10.5px', color: kc.c, background: kc.bg, borderRadius: '5px', padding: '1px 7px', flexShrink: 0 },
-        title: t.title,
-        titleStyle: { fontSize: '13.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--ink)' },
-        tags: t.tags,
-        meta: t.dl ? 'DDL ' + t.dl.replace(/[<>]/g, '') : (t.time || ''),
-        metaStyle: { marginLeft: 'auto', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10.5px', color: t.dl ? DG : 'var(--faint)', flexShrink: 0 },
+        kw,
+        kwStyle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '10.5px', color: kc.c, background: kc.bg, borderRadius: '5px', padding: '1px 7px', flexShrink: 0, display: kw ? 'inline' : 'none' },
+        title,
+        titleStyle: { fontSize: '13.5px', flex: '1 1 120px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: key === 'free' ? 'var(--ink2)' : 'var(--ink)' },
+        tags,
+        meta,
+        metaStyle: { marginLeft: 'auto', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10.5px', color: metaColor, flexShrink: 0, whiteSpace: 'nowrap' },
         radio: on ? '●' : '○',
         radioStyle: { fontSize: '13px', color: on ? AC : 'var(--dash)', flexShrink: 0, width: '14px' },
-        onPick: () => set({ seatPick: t.id }),
-        style: { display: 'flex', alignItems: 'center', gap: '9px', padding: '8px 11px', borderRadius: '8px', cursor: 'pointer', border: on ? '1.5px solid ' + AC : '1px solid var(--line2)', background: on ? 'var(--ac-bg)' : 'var(--card)' }
+        onPick: () => set({ seatPick: key }),
+        style: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 9px', padding: '8px 11px', borderRadius: '8px', cursor: 'pointer', border: on ? '1.5px solid ' + AC : '1px solid var(--line2)', background: on ? 'var(--ac-bg)' : 'var(--card)' }
       };
-    });
+    };
+    const seatTasks = this.seatItems().map(t => seatRow(t.key, t.kw + (t.prio ? ' [#' + t.prio + ']' : ''), kwColors[t.kw] || kwColors.TODO, t.title, t.tags, t.meta, t.dl ? DG : 'var(--faint)'))
+      .concat([seatRow('free', '', kwColors.TODO, '不指定任务 · 自由专注', '', '', 'var(--faint)')]);
     const doSeatCapture = () => {
       const v = (s.seatCapture || '').trim();
       if (!v) return;
       const m = v.match(/^(.*?)\s*(:(?:[^:\s]+:)+)?$/);
       const id = s.nextTaskId;
       const t = { id, kw: 'TODO', prio: '', title: (m && m[1] ? m[1] : v).trim(), tags: (m && m[2]) || '', time: '', sched: '', dl: '' };
-      set({ tasks: s.tasks.concat([t]), nextTaskId: id + 1, seatCapture: '', seatPick: id });
+      set({ tasks: s.tasks.concat([t]), nextTaskId: id + 1, seatCapture: '', seatPick: 't' + id });
+      this.markDone('capture');
+      this.toastMsg('已捕获并选中：' + t.title);
     };
 
     // import
@@ -2099,13 +2533,14 @@ class Component extends DCLogic {
       }
       return cells;
     };
+    const since30 = (function () { const d = new Date(); d.setDate(d.getDate() - 29); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
     const habitRows = s.habits.map(h => {
       const doneToday = h.history.indexOf(this.todayIso()) >= 0;
       const st = this.habitStreak(h);
       return {
         id: h.id, title: h.title, tags: h.tags || '',
         streakStr: '#' + st, bestStr: '历史 #' + h.best,
-        rate30: Math.round(h.history.filter(d => d >= '2026-05-13').length / 30 * 100) + '%',
+        rate30: Math.round(h.history.filter(d => d >= since30 && d <= this.todayIso()).length / 30 * 100) + '%',
         cells: habitCells(h),
         doneToday,
         checkLabel: doneToday ? '✓ 今日已打卡' : '打卡',
@@ -2117,6 +2552,7 @@ class Component extends DCLogic {
 
     // ===== 国策树 =====
     const ruleArr = s.rules;
+    const ruleCanAddNow = this.ruleCanAddToday();
     const ruleRows = ruleArr.map((r, idx) => {
       const next = ruleArr[idx + 1];
       const hasKids = next && next.level > r.level;
@@ -2135,7 +2571,11 @@ class Component extends DCLogic {
         onTitle: e => this.rulePatch(r.id, { title: e.target.value }),
         onNote: e => this.rulePatch(r.id, { note: e.target.value }),
         onViolate: () => set({ ruleViolatePending: r.id }),
-        onAddChild: () => set({ ruleDraft: { title: '', note: '', parent: r.id } })
+        onAddChild: () => {
+          if (!ruleCanAddNow) { this.toastMsg('今天已经立过一条国策，明天再来细化', 'warn'); return; }
+          set({ ruleDraft: { title: '', note: '', parent: r.id, stale: '', node: '' } });
+          setTimeout(() => { try { const el = document.querySelector('[data-rule-form]'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* ignore */ } }, 60);
+        }
       };
     });
     const ruleCanAdd = this.ruleCanAddToday();
@@ -2172,13 +2612,166 @@ class Component extends DCLogic {
       : chain.streak >= 5 || moodScore >= 0.4 ? { face: '·‿·', label: '状态平稳', color: 'var(--ac)' }
       : { face: '·_·', label: '需要你的坚持', color: 'var(--warn)' };
 
+    // ===== 引导：各页「怎么用」说明 =====
+    const TIPS = {
+      chain: { title: '任务链 · 一个节点怎么走', intro: '任务链是 CTDP 的主体：每完成一个节点，连胜 +1；违规一次，整条链清零。', steps: [
+        '在「神圣座位」里选一条任务，或选「不指定任务 · 自由专注」。',
+        '能马上开始就点「坐上神圣座位」；阻力大就先做预约信号，点「预约 15 分钟」，倒计时内点「已就位 · 开始」。',
+        '专注满完成条件（当前 ' + (chain.mins || 60) + ' 分钟），点「完成节点」。想提前结束要走判定。',
+        '中途走神或被打断超过 2 分钟，点「报告疑似违规」，当场判定：违规断链，或永久允许写进判例。',
+        '精锐链只在最好状态下用；普通链是储君，精锐断了由连胜最长的普通链继位。'
+      ] },
+      agenda: { title: '今日 · 快速捕获', intro: '这里放今天要做的零散任务，它们会出现在神圣座位的候选列表里。', steps: [
+        '在输入框写任务，回车即可；末尾可以加标签，如「论文修订 :突击:」，统计页按标签汇总专注时长。',
+        '点左侧方框切换完成；点「去专注 →」直接把它放上神圣座位。',
+        '点 × 删除，删掉的任务会先进回收站。'
+      ] },
+      projects: { title: '项目 · org 大纲', intro: '长期项目用大纲拆解。把当前要推进的那一步标成 NEXT，它会出现在神圣座位的候选里。', steps: [
+        '点「+ 新建顶层条目」建一个项目，选中后用工具条加子项、升降级、上下移。',
+        '点关键字循环 TODO → NEXT → WAITING → DONE → CANCELLED；点 [#] 设优先级。',
+        '把下一步设为 NEXT，回到任务链就能直接选它开始一个节点；完成节点时它会自动标为 DONE。',
+        '标题里按回车新建同级；打开 [n/m] 可以看子任务进度。'
+      ] },
+      groups: { title: '任务组 · 固定流程', intro: '晨间启动、番茄循环这类按顺序走的流程，适合做成任务组。', steps: [
+        '编辑每一步的名称和分钟数，用 − / + 设置要循环几轮。',
+        '点「▶ 开始循环」，每一步到点会提醒（需在设置里开启提醒），点「完成本步 →」推进。',
+        '整组走完 = 当前活动链 +1 个节点，积分 +5。'
+      ] },
+      habits: { title: '习惯 · 每日打卡', intro: '习惯独立计连胜，断了只影响这一个习惯，不会动到任务链。', steps: [
+        '在底部输入框添加每天要做的小事，回车即可。',
+        '每天做完点「打卡」；点错了再点一次可以撤销。',
+        '网格是近 28 天，最右侧带框的是今天。'
+      ] },
+      rules: { title: '国策 · 从源头立规则（RSIP）', intro: '把反复失控的局面，拆成「负面稳态 → 干预节点 → 规则」，一天只加一条，慢慢长成一棵规则树。', steps: [
+        '想一个反复出现的负面稳态，如「睡前刷手机到凌晨」。',
+        '往回找干预节点：最早、最容易拦住它的那一刻，如「带着手机进卧室」。',
+        '在那一刻立一条具体可执行的规则，如「手机留客厅充电」。点开已有规则可以「+ 细化子规则」。',
+        '每晚回顾：都守住了就点「今日全部坚守 +1」；违反了哪条，点开它选「违规」，它会连同子规则一起作废，进回收站。'
+      ] },
+      cases: { title: '判例 · 越来越清楚的边界', intro: '判例只能在判定时产生，而且不能删除。它们一起定义了你的「最好状态」到底允许什么。', steps: [
+        '专注中遇到灰色情况，判定弹窗会先列出已有判例；属于判例就直接继续。',
+        '选「永久允许」之前问自己：以后每次都允许，我能接受吗？'
+      ] },
+      storage: { title: '设置 · 数据在哪里', intro: '所有数据只存在这台设备的浏览器里，没有服务器。清理浏览器数据会把它们一起清掉。', steps: [
+        '至少每周点一次「下载完整状态 .json」做备份，换设备时用「导入状态 .json」恢复。',
+        'Chrome / Edge 可以连接本地 control.org，之后每次变更自动写入。',
+        '需要多设备时，填写 S3 / R2 配置，用「立即备份 / 从远端恢复」。',
+        '开启「本地提醒」后，预约快到点、完成条件达成、任务组到点都会弹系统通知。'
+      ] }
+    };
+    const AUTO_TIP = { agenda: 1, projects: 1, groups: 1, habits: 1, rules: 1, cases: 1, storage: 1 };
+    const tip = TIPS[s.view] || null;
+    const tipForced = s.tipOpen === s.view;
+    const tipShow = !!tip && s.welcomeSeen && (tipForced || (AUTO_TIP[s.view] && !(ob.tips || {})[s.view]));
+    const dismissTip = () => set({ tipOpen: null, onboard: Object.assign({}, ob, { tips: Object.assign({}, ob.tips, { [s.view]: true }) }) });
+
+    // ===== 引导：上手清单（按真实操作打勾） =====
+    const done = ob.done || {};
+    const ckDefs = [
+      { key: 'ritual', title: '定下触发标志、完成条件和预约信号', hint: '神圣座位上方那一行，点「✎ 调整」。', label: '去调整', act: () => set({ ritualEdit: true, view: 'chain' }) },
+      { key: 'capture', title: '捕获第一条任务', hint: '在神圣座位的输入框里写一条今天要做的事，回车。', label: '', act: null },
+      { key: 'snap', title: '用预约启动一次', hint: '做出信号「' + (s.auxSignal || '打一个响指') + '」，点「预约 15 分钟」，倒计时内就位。', label: '', act: null },
+      { key: 'node', title: '完成第一个节点', hint: '专注满完成条件，点「完成节点」。', label: '', act: null },
+      { key: 'rule', title: '立第一条国策', hint: '负面稳态 → 干预节点 → 规则，一天一条。', label: '去国策', act: () => set({ view: 'rules' }) },
+      { key: 'notify', title: '开启本地提醒', hint: '预约快到点、完成条件达成时弹系统通知。', label: '开启', act: () => this.enableNotify() },
+      { key: 'backup', title: '做一次备份', hint: '数据只在本机浏览器，下载一份 .json 或连接 control.org。', label: '去备份', act: () => set({ view: 'storage' }) }
+    ];
+    const ckDone = ckDefs.filter(d => done[d.key]).length;
+    const checklistItems = ckDefs.map(d => {
+      const ok = !!done[d.key];
+      return {
+        title: d.title, hint: d.hint, box: ok ? '✓' : '',
+        hasAction: !ok && !!d.act, actionLabel: d.label, onAction: d.act || (() => {}),
+        rowStyle: { display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 10px', borderRadius: '9px', background: ok ? 'transparent' : 'var(--sub)' },
+        boxStyle: { width: '18px', height: '18px', borderRadius: '5px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, background: ok ? 'var(--ok)' : 'var(--card)', color: 'var(--card)', border: ok ? 'none' : '1.5px solid var(--dash)' },
+        titleStyle: { fontSize: '13px', color: ok ? 'var(--faint)' : INK, textDecoration: ok ? 'line-through' : 'none' }
+      };
+    });
+    const checklistShow = s.welcomeSeen && !ob.checklistHidden && ckDone < ckDefs.length;
+    // 默认只露出「下一步」，展开后显示全部
+    const ckNextIdx = ckDefs.findIndex(d => !done[d.key]);
+    const checklistVisible = ob.checklistOpen ? checklistItems : checklistItems.filter((it, i) => i === ckNextIdx).map(it => Object.assign({}, it, { title: '下一步：' + it.title }));
+
+    // ===== 引导：分步设置向导 =====
+    const GUIDE = [
+      { badge: 'C', title: '欢迎使用 Control', kicker: '自制力工程 · 基于 CTDP / RSIP' },
+      { badge: '座', title: '神圣座位：选一个触发标志', kicker: '第 1 / 5 步 · 神圣座位原理' },
+      { badge: '时', title: '完成条件：一个节点坐多久', kicker: '第 2 / 5 步 · 节点的完成条件' },
+      { badge: '例', title: '下必为例：灰色地带只判一次', kicker: '第 3 / 5 步 · 下必为例原理' },
+      { badge: '延', title: '线性时延：先预约，再开始', kicker: '第 4 / 5 步 · 线性时延原理' },
+      { badge: '策', title: '国策：从失控的源头立规则', kicker: '第 5 / 5 步 · RSIP（可选）' },
+      { badge: '✓', title: '准备好了', kicker: '确认你的设置，选择从哪里开始' }
+    ];
+    const gStep = Math.max(0, Math.min(GUIDE.length - 1, s.guideStep || 0));
+    const gMins = s.guideMins || 60;
+    const chipStyle = on => ({ padding: '7px 13px', borderRadius: '999px', fontSize: '12.5px', fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', border: '1px solid ' + (on ? AC : 'var(--line)'), background: on ? 'var(--ac-bg)' : 'var(--card)', color: on ? AC : 'var(--ink2)', fontWeight: on ? 700 : 400 });
+    const mkChips = (opts, cur, onPick) => opts.map(o => ({ label: o, style: chipStyle(o === cur), onPick: () => onPick(o) }));
+    const guideDraft = s.ruleDraft || {};
+    const guideVals = {
+      guideBadge: GUIDE[gStep].badge, guideTitle: GUIDE[gStep].title, guideKicker: GUIDE[gStep].kicker,
+      guideDots: GUIDE.map((g, i) => ({ style: { flex: 1, height: '4px', borderRadius: '2px', background: i <= gStep ? AC : 'var(--line2)' } })),
+      guideS0: gStep === 0, guideS1: gStep === 1, guideS2: gStep === 2, guideS3: gStep === 3, guideS4: gStep === 4, guideS5: gStep === 5, guideS6: gStep === 6,
+      guideHasPrev: gStep > 0, guideHasNext: gStep < GUIDE.length - 1,
+      guideNextLabel: gStep === 0 ? '开始设置 →' : (gStep === 5 && !(guideDraft.title || '').trim() ? '先跳过，下一步 →' : '下一步 →'),
+      onGuidePrev: () => set({ guideStep: Math.max(0, gStep - 1) }),
+      onGuideNext: () => set({ guideStep: Math.min(GUIDE.length - 1, gStep + 1) }),
+      onGuideFinishFresh: () => this.finishGuide(true),
+      onGuideFinishDemo: () => this.finishGuide(false),
+      guideMarkerChips: mkChips(['坐上书桌前那把椅子', '戴上降噪耳机', '去图书馆靠窗的座位', '手机锁进抽屉'], s.seatMarker, v => set({ seatMarker: v })),
+      guideSignalChips: mkChips(['打一个响指', '拍两下手', '说一句「开始预约」', '把水杯放到桌角'], s.auxSignal, v => set({ auxSignal: v })),
+      guideMinsChips: [25, 45, 60, 90].map(m => ({ label: m + ' 分钟', style: chipStyle(m === gMins), onPick: () => set({ guideMins: m }) })),
+      guideMinsStr: gMins + ' 分钟',
+      guideRuleSummary: (guideDraft.title || '').trim() ? guideDraft.title.trim() + ((guideDraft.node || '').trim() ? '（干预节点：' + guideDraft.node.trim() + '）' : '') : '暂不设立，之后到「国策」页再立',
+    };
+
+    // ===== 仪式设定（座位上方摘要行） =====
+    const ritualMinsChips = [25, 45, 60, 90].map(m => ({ label: m + ' 分', style: chipStyle(m === (chain.mins || 60)), onPick: () => set({ chains: s.chains.map(c => c.id === chain.id ? Object.assign({}, c, { mins: m }) : c) }) }));
+
+    // ===== toast =====
+    const toast = s.toast;
+    const toastColors = { ok: ['var(--fill)', 'var(--on-fill)'], warn: ['var(--warn-bg)', 'var(--warn)'], bad: ['var(--dg)', '#fff'] };
+    const tc = toastColors[(toast && toast.kind) || 'ok'] || toastColors.ok;
+
     const orgSource = this.buildOrg();
 
 
-    return {
+    return Object.assign(guideVals, {
       // shell
       navItems,
+      moreItems,
+      moreOpen: !!s.moreOpen,
+      onCloseMore: () => set({ moreOpen: false }),
+      onMoreOrg: () => set({ moreOpen: false, srcOpen: true }),
+      goChain: () => set({ view: 'chain' }),
       viewTitle: titles[s.view] || 'Control',
+
+      // 本页说明
+      tipAvailable: !!tip,
+      tipShow,
+      tipTitle: tip ? tip.title : '',
+      tipIntro: tip ? tip.intro : '',
+      tipSteps: tip ? tip.steps.map((t, i) => ({ n: i + 1, text: t })) : [],
+      onToggleTip: () => { if (tipShow) dismissTip(); else set({ tipOpen: s.view }); },
+      onDismissTip: dismissTip,
+      tipBtnStyle: { padding: '3px 10px', borderRadius: '999px', fontSize: '12px', fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, border: '1px solid ' + (tipShow ? 'var(--ac)' : 'var(--line)'), background: tipShow ? 'var(--ac-bg)' : 'var(--card)', color: tipShow ? AC : 'var(--mut)' },
+
+      // 上手清单
+      checklistShow,
+      checklistItems: checklistVisible,
+      checklistExpanded: !!ob.checklistOpen,
+      checklistToggleLabel: ob.checklistOpen ? '收起' : '展开全部',
+      onToggleChecklist: () => set({ onboard: Object.assign({}, ob, { checklistOpen: !ob.checklistOpen }) }),
+      checklistProgress: ckDone + ' / ' + ckDefs.length,
+      checklistPct: Math.round(ckDone / ckDefs.length * 100) + '%',
+      onHideChecklist: () => { set({ onboard: Object.assign({}, ob, { checklistHidden: true }) }); this.toastMsg('清单已隐藏，可在「设置 → 新手引导」重新显示'); },
+      onResetTips: () => { set({ onboard: Object.assign({}, ob, { tips: {}, checklistHidden: false }) }); this.toastMsg('已重新显示上手清单和各页说明'); },
+      onMarkBackup: () => this.markDone('backup'),
+
+      // toast
+      toastShow: !!toast,
+      toastMsg: toast ? toast.msg : '',
+      onToastClose: () => set({ toast: null }),
+      toastStyle: { position: 'fixed', left: '50%', bottom: '28px', transform: 'translateX(-50%)', zIndex: 80, maxWidth: 'calc(100vw - 32px)', padding: '11px 18px', borderRadius: '11px', fontSize: '13.5px', lineHeight: 1.5, boxShadow: '0 10px 30px var(--shadow)', background: tc[0], color: tc[1], cursor: 'pointer', border: (toast && toast.kind === 'warn') ? '1px solid var(--warn)' : 'none' },
       todayHuman: (function () { const d = new Date(); return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 · ' + ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()]; })(),
       todayOrgStamp: '<' + this.todayIso() + ' ' + this._wd(new Date()) + '>',
       vChain: s.view === 'chain', vAgenda: s.view === 'agenda', vProjects: s.view === 'projects',
@@ -2212,28 +2805,39 @@ class Component extends DCLogic {
       // session
       sessActive: !!sess.active,
       sessIdle: !sess.active,
-      sessTaskTitle: sessTask ? sessTask.title : '（无任务）',
+      sessChainName: sChain.name,
+      sessTaskTitle: sessTask ? sessTask.title : '自由专注（未指定任务）',
+      sessReached,
+      sessNotReached: !sessReached,
+      sessTargetStr: sessReached ? '✓ 已满 ' + sMins + ' 分钟' : '完成条件 ' + sMins + ' 分钟 · 还差 ' + this.fmtMMSS(sMins * 60 - sessElapsed),
+      sessTargetColor: sessReached ? 'var(--ok)' : 'var(--mut)',
+      sessTargetBarStyle: { height: '100%', borderRadius: '4px', width: Math.round(sessTargetFrac * 100) + '%', background: sessReached ? 'var(--ok)' : AC },
+      sessHint: sessReached ? '可以完成了；继续坐下去也行，节点按实际时长记 CLOCK' : '走神 / 去做别的事超过 2 分钟 → 报告疑似违规',
+      onEarlyEnd: () => set({ modal: 'violation', judgeKind: 'early' }),
       sessElapsedStr: this.fmtHMS(sessElapsed),
       sessOrg,
       pomoTimeStr: this.fmtMMSS(pomoLen - pomoElapsed),
       pomoLabel: '第 ' + pomoIdx + ' 颗 · 25min',
       pomoRingStyle,
-      nextNodeStr: '#' + (chain.streak + 1),
+      nextNodeStr: '#' + (sChain.streak + 1),
       seatTasks,
-      seatEmpty: seatTasks.length === 0,
+      idleTitle: s.aux.active ? '预约生效 · 去坐上神圣座位' : '神圣座位空着',
+      idlePanelStyle: { flex: 1, background: 'var(--card)', border: s.aux.active ? '1.5px solid ' + AC : '1px dashed var(--dash)', borderRadius: '14px', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '12px' },
+      chainNameShort: chain.name,
+      chainMinsStr: (chain.mins || 60) + ' 分钟',
+      ritualCollapsed: !s.ritualEdit,
+      ritualEditing: !!s.ritualEdit,
+      ritualMinsChips,
+      onRitualEdit: () => set({ ritualEdit: true }),
+      onRitualDone: () => { set({ ritualEdit: false }); this.markDone('ritual'); },
+      snapLabel: '「' + ((s.auxSignal || '打一个响指').length > 8 ? (s.auxSignal || '').slice(0, 8) + '…' : (s.auxSignal || '打一个响指')) + '」· 预约 15 分钟',
       seatCapture: s.seatCapture || '',
       onSeatCaptureChange: e => set({ seatCapture: e.target.value }),
       onSeatCaptureKey: e => { if (e.key === 'Enter') doSeatCapture(); },
       onSeatCaptureAdd: doSeatCapture,
-      seatStartLabel: seatSel ? '坐上神圣座位 · ' + (seatSel.title.length > 10 ? seatSel.title.slice(0, 10) + '…' : seatSel.title) : '坐上神圣座位',
-      seatStartStyle: {
-        padding: '10px 22px', borderRadius: '9px', fontSize: '14.5px', fontWeight: 700, fontFamily: 'inherit',
-        whiteSpace: 'nowrap', flexShrink: 0, border: 'none',
-        background: seatTasks.length ? 'var(--ink)' : 'var(--dash)',
-        color: 'var(--on-fill)', cursor: seatTasks.length ? 'pointer' : 'not-allowed'
-      },
-      onCompleteNode: completeNode,
-      onViolation: () => set({ modal: 'violation' }),
+      seatStartLabel: seatSel ? '坐上神圣座位 · ' + (seatSel.title.length > 10 ? seatSel.title.slice(0, 10) + '…' : seatSel.title) : '坐上神圣座位 · 自由专注',
+      onCompleteNode: () => this.completeNode(),
+      onViolation: () => set({ modal: 'violation', judgeKind: 'distract' }),
       onStartNow: () => this.startSession(false),
 
       // aux
@@ -2242,7 +2846,7 @@ class Component extends DCLogic {
       auxStreakStr: '#' + s.aux.streak,
       auxRemainingStr: this.fmtMMSS(auxRemain),
       auxRingStyle: auxRing,
-      onSnap: () => set({ aux: Object.assign({}, s.aux, { active: true, endsAt: Date.now() + 900000 }) }),
+      onSnap: () => { set({ aux: Object.assign({}, s.aux, { active: true, endsAt: Date.now() + 900000 }) }); this.markDone('snap'); this.toastMsg('预约生效：15 分钟内坐上「' + (s.seatMarker || '神圣座位') + '」'); },
       seatMarker: s.seatMarker || '坐上书桌前那把椅子',
       auxSignal: s.auxSignal || '打一个响指',
       onSeatMarker: e => set({ seatMarker: e.target.value }),
@@ -2259,6 +2863,7 @@ class Component extends DCLogic {
 
       // agenda
       agendaRows,
+      agendaEmpty: s.tasks.length === 0,
       captureValue: s.captureValue,
       onCaptureChange: e => set({ captureValue: e.target.value }),
       onCaptureKey: e => { if (e.key === 'Enter') doCapture(); },
@@ -2290,6 +2895,15 @@ class Component extends DCLogic {
 
       // 国策
       ruleRows,
+      rulesEmpty: ruleArr.length === 0,
+      ruleBumpLabel: s.ruleBumpDate === this.todayIso() ? '✓ 今日已结算' : '今日全部坚守 +1',
+      ruleBumpStyle: { padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontFamily: 'inherit', whiteSpace: 'nowrap', border: '1px solid var(--ok-line)', background: s.ruleBumpDate === this.todayIso() ? 'var(--ok-bg)' : 'var(--card)', color: 'var(--ok)', cursor: s.ruleBumpDate === this.todayIso() ? 'default' : 'pointer' },
+      ruleFormStyle: { background: 'var(--sub)', border: (s.ruleDraft && s.ruleDraft.parent) ? '1.5px solid var(--ac)' : '1px dashed var(--dash)', borderRadius: '14px', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '10px' },
+      ruleDraftStale: (s.ruleDraft && s.ruleDraft.stale) || '',
+      ruleDraftNode: (s.ruleDraft && s.ruleDraft.node) || '',
+      onRuleDraftStale: e => set({ ruleDraft: Object.assign({}, s.ruleDraft, { stale: e.target.value }) }),
+      onRuleDraftNode: e => set({ ruleDraft: Object.assign({}, s.ruleDraft, { node: e.target.value }) }),
+      onRuleDraftKey: e => { if (e.key === 'Enter') this.ruleAdd(s.ruleDraft); },
       ruleCanAdd,
       ruleCannotAdd: !ruleCanAdd,
       ruleLockMsg: ruleCanAdd ? '' : '今日已新增过国策 —— RSIP 要求每天最多立一条新规则，明天再来。',
@@ -2300,7 +2914,7 @@ class Component extends DCLogic {
       onRuleDraftTitle: e => set({ ruleDraft: Object.assign({}, s.ruleDraft, { title: e.target.value }) }),
       onRuleDraftNote: e => set({ ruleDraft: Object.assign({}, s.ruleDraft, { note: e.target.value }) }),
       onRuleClearParent: () => set({ ruleDraft: Object.assign({}, s.ruleDraft, { parent: '' }) }),
-      onRuleAdd: () => { this.ruleAdd((s.ruleDraft || {}).title, (s.ruleDraft || {}).note, (s.ruleDraft || {}).parent); },
+      onRuleAdd: () => this.ruleAdd(s.ruleDraft),
       onRuleBumpAll: () => this.ruleBumpAll(),
       ruleVioConfirm: !!ruleVioP,
       ruleVioName: ruleVioP ? ruleVioP.title : '',
@@ -2340,9 +2954,8 @@ class Component extends DCLogic {
       onInitCancel: () => set({ initPending: false }),
       onInitConfirm: () => this.initBlank(),
       showWelcome: !s.welcomeSeen && s.modal !== 'violation' && s.modal !== 'aux',
-      onWelcomeClose: () => set({ welcomeSeen: true }),
-      onWelcomeFresh: () => { this.setState({ welcomeSeen: true }); this.initBlank(); },
-      onOpenGuide: () => set({ welcomeSeen: false }),
+      onWelcomeClose: () => set({ welcomeSeen: true, guideStep: 0 }),
+      onOpenGuide: () => set({ welcomeSeen: false, guideStep: 0, guideMins: chain.mins || 60 }),
       sbCollapsedClass: s.navCollapsed ? 'is-collapsed' : '',
       collapseIcon: s.navCollapsed ? '»' : '«  收起',
       collapseTitle: s.navCollapsed ? '展开侧栏' : '收起侧栏',
@@ -2357,6 +2970,7 @@ class Component extends DCLogic {
 
       // stats
       bars, powCells, tagBars,
+      tagBarsEmpty: tagBars.length === 0,
       weekHoursStr: (weekMins / 60).toFixed(1) + 'h',
       totalNodesStr: String(s.totalNodes),
       caseCountStr: String(s.cases.length),
@@ -2394,12 +3008,24 @@ class Component extends DCLogic {
       // modals
       modalViolation: s.modal === 'violation',
       modalAux: s.modal === 'aux',
-      judgeContext: chain.name + ' ' + '#' + chain.streak + ' · 节点 #' + (chain.streak + 1) + ' 执行中。',
+      judgeTitle: isEarly ? '提前结束 · 判定' : '疑似违规 · 判定',
+      judgeContext: sChain.name + ' #' + sChain.streak + ' · 节点 #' + (sChain.streak + 1) + (isEarly ? ' 已专注 ' + this.fmtMMSS(sessElapsed) + '，完成条件是 ' + sMins + ' 分钟。' : ' 执行中。'),
+      judgeRule: isEarly ? '没满完成条件就结束，属于疑似违规。下必为例：判决永久生效。' : '走神或去做别的事超过 2 分钟即构成违规。下必为例：你只有两个选项，判决永久生效。',
+      judgeHasCases: judgeCases.length > 0,
+      judgeCases,
+      onJudgeByCase: judgeByCase,
+      judgeByCaseLabel: isEarly ? '属于已有判例 → 完成本节点' : '属于已有判例 → 继续专注',
+      judgePlaceholder: isEarly ? '为什么提前结束？如：任务本身已经完成' : '描述该行为，如：中途回复了微信消息',
+      judgeBreakLabel: '判为违规 —— ' + sChain.name + ' #' + sChain.streak + ' 清零' + (sChain.elite && s.chains.length > 1 ? '，储君继位' : '') + '，下次从 #1 开始',
+      judgeAllowLabel: isEarly ? '永久允许 —— 写入判例，并完成本节点' : '永久允许 —— 写入判例库，今后同类情况一律放行',
       violationText: s.violationText,
       onViolationText: e => set({ violationText: e.target.value }),
       onJudgeBreak: judgeBreak,
       onJudgeAllow: judgeAllow,
       onAuxBreak: auxBreak,
+      auxCases,
+      auxHasCases: auxCases.length > 0,
+      onAuxByCase: () => { set({ aux: Object.assign({}, s.aux, { active: false, endsAt: 0 }), modal: null, violationText: '' }); this.toastMsg('依已有判例，本次预约作废不罚'); },
       onAuxAllow: auxAllow,
       onModalCancel: () => set({ modal: null, violationText: '' }),
 
@@ -2411,7 +3037,7 @@ class Component extends DCLogic {
       orgHref: 'data:text/plain;charset=utf-8,' + encodeURIComponent(orgSource),
       onImport,
       importMsg: s.importMsg
-    };
+    });
   }
 
   orgDate() { return this.todayIso() + ' ' + this._wd(new Date()); }
@@ -2490,13 +3116,15 @@ class Component extends DCLogic {
     const g = this.group(r.groupId); if (!g) { this.groupStop(); return; }
     // log the finished item as a clock entry
     const it = g.items[r.idx];
-    if (it) this.pushClock(it.title, it.mins);
+    if (it) this.pushClock(it.title, it.mins, it.tags);
     let idx = r.idx + 1, cycle = r.cycle;
     if (idx >= g.items.length) { idx = 0; cycle += 1; }
     if (cycle >= Math.max(1, g.repeat)) {
       // whole group done → +1 active chain node, award points
       this.bumpActiveChain();
       this.setState(s => ({ groupRun: { active: false, groupId: null, idx: 0, cycle: 0, itemStartedAt: 0, paused: false, pausedAt: 0 }, points: s.points + 5 }));
+      this.markDone('node');
+      this.toastMsg('「' + g.title + '」整组完成 · ' + this.activeChain().name + ' +1 节点 · 积分 +5');
       return;
     }
     this.setState({ groupRun: Object.assign({}, r, { idx, cycle, itemStartedAt: Date.now(), paused: false, pausedAt: 0 }) });
@@ -2527,10 +3155,10 @@ class Component extends DCLogic {
     this.setState(s => ({ groups: s.groups.filter(x => x.id !== gid), groupRun: s.groupRun.groupId === gid ? { active: false, groupId: null, idx: 0, cycle: 0, itemStartedAt: 0, paused: false, pausedAt: 0 } : s.groupRun }));
   }
 
-  pushClock(title, mins) {
+  pushClock(title, mins, tags) {
     const chain = this.activeChain();
     this.setState(s => ({
-      clockLog: s.clockLog.concat([{ title, chain: chain.name, node: chain.streak + 1, start: this.stampPlus(mins), end: this.nowStamp(), mins }]),
+      clockLog: s.clockLog.concat([{ title, chain: chain.name, node: chain.streak + 1, start: this.stampPlus(mins), end: this.nowStamp(), mins, tags: tags || '' }]),
       todayMins: s.todayMins + mins
     }));
   }
@@ -2545,25 +3173,27 @@ class Component extends DCLogic {
   ruleSubEnd(arr, i) { const lvl = arr[i].level; let j = i + 1; while (j < arr.length && arr[j].level > lvl) j++; return j; }
   rulePatch(id, patch) { this.setState(s => ({ rules: s.rules.map(r => r.id === id ? Object.assign({}, r, patch) : r) })); }
   ruleCanAddToday() { return this.state.lastRuleAddDate !== this.todayIso(); }
-  ruleAdd(title, note, parentId) {
-    title = (title || '').trim(); if (!title) return false;
+  ruleAdd(draft) {
+    const d = draft || {};
+    const title = (d.title || '').trim();
+    if (!title) { this.toastMsg('先写下「③ 规则」：在干预节点上具体做什么', 'warn'); return false; }
     if (!this.ruleCanAddToday()) return false;
+    const stale = (d.stale || '').trim(), node = (d.node || '').trim();
+    const rule = { id: 'k' + Date.now(), level: 1, title, stale, node, note: (d.note || '').trim() || (node ? '回溯点：' + node : ''), streak: 0, created: this.todayIso() };
     const arr = this.state.rules.slice();
-    if (parentId) {
-      const idx = arr.findIndex(r => r.id === parentId);
-      if (idx >= 0) {
-        const end = this.ruleSubEnd(arr, idx);
-        arr.splice(end, 0, { id: 'k' + Date.now(), level: arr[idx].level + 1, title, note: note || '', streak: 0, created: this.todayIso() });
-      }
-    } else {
-      arr.push({ id: 'k' + Date.now(), level: 1, title, note: note || '', streak: 0, created: this.todayIso() });
-    }
-    this.setState({ rules: arr, lastRuleAddDate: this.todayIso(), ruleDraft: { title: '', note: '', parent: '' } });
+    const idx = d.parent ? arr.findIndex(r => r.id === d.parent) : -1;
+    if (idx >= 0) arr.splice(this.ruleSubEnd(arr, idx), 0, Object.assign(rule, { level: arr[idx].level + 1 }));
+    else arr.push(rule);
+    this.setState({ rules: arr, lastRuleAddDate: this.todayIso(), ruleDraft: { title: '', note: '', parent: '', stale: '', node: '' } });
+    this.markDone('rule');
+    this.toastMsg('国策已立：' + title + ' —— 明天才能再立新的');
     return true;
   }
   ruleBumpAll() {
-    // 全部坚守 +1（每日结算）
-    this.setState(s => ({ rules: s.rules.map(r => Object.assign({}, r, { streak: r.streak + 1 })) }));
+    // 全部坚守 +1（每日结算，一天一次）
+    if (this.state.ruleBumpDate === this.todayIso() || !this.state.rules.length) return;
+    this.setState(s => ({ rules: s.rules.map(r => Object.assign({}, r, { streak: r.streak + 1 })), ruleBumpDate: this.todayIso() }));
+    this.toastMsg('今日结算完成：全部国策坚守 +1');
   }
   ruleViolate(id) {
     // 违规 → 该节点连同所有子节点级联删除（进回收站），祖先链清零
@@ -2571,14 +3201,14 @@ class Component extends DCLogic {
     const idx = arr.findIndex(r => r.id === id); if (idx < 0) return;
     const end = this.ruleSubEnd(arr, idx);
     const removed = arr.slice(idx, end);
-    const trashAdds = removed.map(r => ({ id: 'tr' + Date.now() + Math.random().toString(36).slice(2, 6), kind: 'rule', title: r.title, deletedAt: this.todayIso() + ' Thu', payload: { rule: r } }));
+    const trashAdds = removed.map(r => ({ id: 'tr' + Date.now() + Math.random().toString(36).slice(2, 6), kind: 'rule', title: r.title, deletedAt: this.orgDate(), payload: { rule: r } }));
     arr.splice(idx, end - idx);
     this.setState(s => ({ rules: arr, trash: trashAdds.concat(s.trash), ruleViolatePending: null, selRule: null }));
   }
 
   // ---------- 回收站 ----------
   toTrash(kind, title, payload) {
-    this.setState(s => ({ trash: [{ id: 'tr' + Date.now() + Math.random().toString(36).slice(2, 6), kind, title, deletedAt: this.todayIso() + ' Thu', payload }].concat(s.trash) }));
+    this.setState(s => ({ trash: [{ id: 'tr' + Date.now() + Math.random().toString(36).slice(2, 6), kind, title, deletedAt: this.orgDate(), payload }].concat(s.trash) }));
   }
   trashPurge(id) { this.setState(s => ({ trash: s.trash.filter(t => t.id !== id) })); }
   trashEmpty() { this.setState({ trash: [] }); }
@@ -2766,6 +3396,7 @@ class Component extends DCLogic {
       await w.write(this.buildOrg());
       await w.close();
       this.setState({ localFileMsg: '✓ 已写入 ' + h.name + ' · ' + new Date().toLocaleTimeString() });
+      this.markDone('backup');
     } catch (e) {
       this.setState({ localFileMsg: '✕ 写入失败：' + e.message });
     }
@@ -2787,6 +3418,7 @@ class Component extends DCLogic {
     delete c.s3; delete c.s3Msg;
     delete c.localFileName; delete c.localFileState; delete c.localFileMsg;
     delete c.importMsg; delete c.captureValue; delete c.violationText;
+    delete c.toast; delete c.moreOpen; delete c.tipOpen; delete c.ritualEdit;
     return c;
   }
   async sha256Hex(msg) {
@@ -2842,7 +3474,7 @@ class Component extends DCLogic {
     try {
       const r1 = await this.s3Fetch('PUT', this.s3Key('control.org'), this.buildOrg());
       const r2 = await this.s3Fetch('PUT', this.s3Key('control.state.json'), JSON.stringify(this.s3Snapshot()));
-      if (r1.ok && r2.ok) this.setState({ s3Msg: '✓ 备份成功（control.org + control.state.json）', lastBackup: new Date().toISOString() });
+      if (r1.ok && r2.ok) { this.setState({ s3Msg: '✓ 备份成功（control.org + control.state.json）', lastBackup: new Date().toISOString() }); this.markDone('backup'); }
       else this.setState({ s3Msg: '✕ 备份失败：HTTP ' + (r1.ok ? r2.status : r1.status) });
     } catch (e) {
       this.setState({ s3Msg: '✕ 备份失败：' + e.message + '。若为 CORS 错误，请按下方说明配置桶的 CORS 规则。' });

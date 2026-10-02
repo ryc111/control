@@ -1,5 +1,5 @@
 /* Control — service worker (offline-first app shell) */
-const VERSION = 'control-v2';
+const VERSION = 'control-v3';
 const CORE = [
   './',
   './index.html',
